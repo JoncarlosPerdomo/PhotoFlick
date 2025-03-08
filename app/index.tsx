@@ -12,21 +12,25 @@ import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
 import { usePhotoContext } from "../context/PhotoContext";
 import { DateGroup } from "../types";
+import { useQuery } from "@tanstack/react-query";
 
 export default function HomeScreen() {
-  const [dateGroups, setDateGroups] = useState<DateGroup[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(
+    null,
+  );
   const { deletePile, loadDeletePile } = usePhotoContext();
   const router = useRouter();
 
+  // Load delete pile when component mounts
   useEffect(() => {
     loadDeletePile();
-    requestPermissionsAndLoadPhotos();
+    requestPermissions();
   }, []);
 
-  const requestPermissionsAndLoadPhotos = async (): Promise<void> => {
+  const requestPermissions = async (): Promise<void> => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
+      setPermissionGranted(status === "granted");
 
       if (status !== "granted") {
         Alert.alert(
@@ -34,20 +38,23 @@ export default function HomeScreen() {
           "This app needs access to your photo library to organize photos.",
           [{ text: "OK" }],
         );
-        setLoading(false);
-        return;
       }
-
-      fetchPhotoDates();
     } catch (error) {
       console.error("Error requesting permissions:", error);
-      setLoading(false);
+      setPermissionGranted(false);
     }
   };
 
-  const fetchPhotoDates = async (): Promise<void> => {
-    setLoading(true);
-    try {
+  // Use React Query to fetch photos
+  const {
+    data: dateGroups = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["photoDateGroups"],
+    queryFn: async () => {
       // Get all photos
       const assets = await MediaLibrary.getAssetsAsync({
         mediaType: MediaLibrary.MediaType.photo,
@@ -88,19 +95,29 @@ export default function HomeScreen() {
         return dateB.getTime() - dateA.getTime();
       });
 
-      setDateGroups(dateGroupsArray);
-    } catch (error) {
-      console.error("Error fetching photos:", error);
-      Alert.alert("Error", "Failed to load photos. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return dateGroupsArray;
+    },
+    enabled: permissionGranted === true, // Only run query when permission is granted
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+  });
+
+  // Show error state
+  if (isError) {
+    console.error("Error fetching photos:", error);
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.errorText}>Error loading photos</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const navigateToPhotoSwipe = (item: DateGroup) => {
     // Pass photos as serialized IDs due to Expo Router limitations with complex objects
     router.push({
-      pathname: `/photo-swipe/${encodeURIComponent(item.date)}`,
+      pathname: "/photo-swipe/[dateGroup]",
       params: {
         dateGroup: item.date,
         photoIds: JSON.stringify(item.photos.map((photo) => photo.id)),
@@ -131,7 +148,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>Loading photo library...</Text>
@@ -152,6 +169,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -194,6 +216,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   deletePileText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ff3b30",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#007AFF",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  retryButtonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,

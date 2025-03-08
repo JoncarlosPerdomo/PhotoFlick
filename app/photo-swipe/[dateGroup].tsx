@@ -37,7 +37,12 @@ export default function PhotoSwipeScreen() {
   const colors = getThemeColors(isDark);
 
   const [processedPhotoIds, setProcessedPhotoIds] = useState<string[]>([]);
-  const { deletePile, addToDeletePile } = useDeletePile();
+  const [lastSwipedPhoto, setLastSwipedPhoto] =
+    useState<AssetWithDisplayUrl | null>(null);
+  const [lastSwipeDirection, setLastSwipeDirection] = useState<
+    "left" | "right" | null
+  >(null);
+  const { deletePile, addToDeletePile, removeFromDeletePile } = useDeletePile();
   const isAnimatingRef = useRef(false);
 
   const {
@@ -130,6 +135,10 @@ export default function PhotoSwipeScreen() {
 
     const photo = displayPhotos[0];
 
+    // Store the last swiped photo and direction for undo functionality
+    setLastSwipedPhoto(photo);
+    setLastSwipeDirection(direction);
+
     if (direction === "left") {
       addToDeletePile(photo);
     }
@@ -144,6 +153,46 @@ export default function PhotoSwipeScreen() {
     if (displayPhotos.length <= 1) {
       router.back();
     }
+  };
+
+  const handleUndo = () => {
+    if (
+      !lastSwipedPhoto ||
+      processedPhotoIds.length === 0 ||
+      isAnimatingRef.current
+    ) {
+      return;
+    }
+
+    isAnimatingRef.current = true;
+
+    if (lastSwipeDirection === "left") {
+      removeFromDeletePile(lastSwipedPhoto.id);
+    }
+
+    const photoToRestoreId = lastSwipedPhoto.id;
+
+    setLastSwipedPhoto(null);
+    setLastSwipeDirection(null);
+
+    const startX =
+      lastSwipeDirection === "left" ? -SCREEN_WIDTH * 1.5 : SCREEN_WIDTH * 1.5;
+
+    setProcessedPhotoIds((prev) =>
+      prev.filter((id) => id !== photoToRestoreId),
+    );
+
+    position.setValue({ x: startX, y: 0 });
+
+    setTimeout(() => {
+      Animated.spring(position, {
+        toValue: { x: 0, y: 0 },
+        friction: 5,
+        useNativeDriver: false,
+      }).start(() => {
+        isAnimatingRef.current = false;
+      });
+    }, 50);
   };
 
   const displayPhotos = photos.filter(
@@ -281,6 +330,14 @@ export default function PhotoSwipeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <TouchableOpacity
+        style={[styles.undoButton, { opacity: lastSwipedPhoto ? 1 : 0.3 }]}
+        onPress={handleUndo}
+        disabled={!lastSwipedPhoto}
+      >
+        <Text style={styles.undoButtonText}>UNDO</Text>
+      </TouchableOpacity>
+
       <View style={styles.cardContainer}>{renderCards()}</View>
 
       <View style={styles.footer}>
@@ -388,6 +445,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   retryButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  undoButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    backgroundColor: "#007AFF",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  undoButtonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,

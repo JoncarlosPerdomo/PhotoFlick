@@ -20,7 +20,7 @@ export default function HomeScreen() {
   const colors = getThemeColors(isDark);
 
   const { deletePile } = useDeletePile();
-  const { completedGroups } = useCompletedGroups();
+  const { completedGroups, toggleGroupCompletion } = useCompletedGroups();
   const { data: permissionResult, isLoading: isLoadingPermission } =
     usePhotoPermissions();
 
@@ -71,6 +71,10 @@ export default function HomeScreen() {
     router.push("/confirm-delete");
   };
 
+  const handleLongPress = (item: DateGroup) => {
+    toggleGroupCompletion(item.date);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <DeletePileButton
@@ -88,6 +92,7 @@ export default function HomeScreen() {
             <DateGroupItem
               item={item}
               onPress={navigateToPhotoSwipe}
+              onLongPress={handleLongPress}
               isDark={isDark}
               isCompleted={completedGroups.includes(item.date)}
             />

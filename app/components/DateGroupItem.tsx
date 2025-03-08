@@ -1,11 +1,12 @@
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, Text, StyleSheet, Vibration } from "react-native";
 import { DateGroup } from "@/types";
 import { getThemeColors } from "@/context/ThemeContext";
 
 interface DateGroupItemProps {
   item: DateGroup;
   onPress: (item: DateGroup) => void;
+  onLongPress: (item: DateGroup) => void;
   isDark: boolean;
   isCompleted?: boolean;
 }
@@ -13,10 +14,16 @@ interface DateGroupItemProps {
 const DateGroupItem: React.FC<DateGroupItemProps> = ({
   item,
   onPress,
+  onLongPress,
   isDark,
   isCompleted = false,
 }) => {
   const colors = getThemeColors(isDark);
+
+  const handleLongPress = () => {
+    Vibration.vibrate(50); // Short vibration for feedback
+    onLongPress(item);
+  };
 
   return (
     <TouchableOpacity
@@ -26,6 +33,8 @@ const DateGroupItem: React.FC<DateGroupItemProps> = ({
         isCompleted && styles.completedGroup,
       ]}
       onPress={() => onPress(item)}
+      onLongPress={handleLongPress}
+      delayLongPress={300}
     >
       <Text
         style={[

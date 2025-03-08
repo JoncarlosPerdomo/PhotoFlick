@@ -355,6 +355,19 @@ export const useCompletedGroups = () => {
     queryClient.setQueryData([queryKeys.completedGroups], updatedGroups);
   };
 
+  const toggleGroupCompletion = async (dateGroup: string) => {
+    const isCompleted = completedGroups.includes(dateGroup);
+    const updatedGroups = isCompleted
+      ? completedGroups.filter((group: string) => group !== dateGroup)
+      : [...completedGroups, dateGroup];
+
+    await AsyncStorage.setItem(
+      queryKeys.completedGroups,
+      JSON.stringify(updatedGroups),
+    );
+    queryClient.setQueryData([queryKeys.completedGroups], updatedGroups);
+  };
+
   const resetCompletedGroups = async () => {
     await AsyncStorage.removeItem(queryKeys.completedGroups);
     queryClient.setQueryData([queryKeys.completedGroups], []);
@@ -363,6 +376,7 @@ export const useCompletedGroups = () => {
   return {
     completedGroups,
     markGroupAsCompleted,
+    toggleGroupCompletion,
     resetCompletedGroups,
   };
 };

@@ -1,4 +1,3 @@
-// app/photo-swipe/[dateGroup].tsx
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
@@ -15,7 +14,6 @@ import * as MediaLibrary from "expo-media-library";
 import { usePhotoContext } from "../../context/PhotoContext";
 import { getSafePhotoUrl, getSafeImageSource } from "../../utils/photoUtils";
 
-// Extended Asset type that includes displayUrl
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
 }
@@ -41,7 +39,7 @@ export default function PhotoSwipeScreen() {
   const [loadingImage, setLoadingImage] = useState<boolean>(false);
   const { addToDeletePile, saveDeletePile } = usePhotoContext();
   const router = useRouter();
-
+  const topPhotoIdRef = useRef<string | null>(null);
   const position = useRef(new Animated.ValueXY()).current;
   const rotation = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
@@ -83,7 +81,6 @@ export default function PhotoSwipeScreen() {
               displayUrl: undefined,
             };
 
-            // Pre-load the display URL to avoid ph:// URL issues later
             try {
               assetWithUrl.displayUrl = await getSafePhotoUrl(asset);
             } catch (error) {
@@ -116,7 +113,6 @@ export default function PhotoSwipeScreen() {
     }
 
     try {
-      // Use our utility function to get a safe URL
       const safeUrl = await getSafePhotoUrl(asset);
 
       // Cache the display URL
@@ -198,20 +194,16 @@ export default function PhotoSwipeScreen() {
 
     const photo = remainingPhotos[0];
 
-    // If swiped left, add to delete pile
     if (direction === "left") {
       addToDeletePile(photo);
       await saveDeletePile();
     }
 
-    // Remove the top card
     const newRemainingPhotos = remainingPhotos.slice(1);
     setRemainingPhotos(newRemainingPhotos);
 
-    // Reset position for the next card
     position.setValue({ x: 0, y: 0 });
 
-    // If no more photos, go back
     if (newRemainingPhotos.length === 0) {
       router.back();
     }
@@ -219,26 +211,63 @@ export default function PhotoSwipeScreen() {
 
   // Load display URLs for the top two cards
   useEffect(() => {
+    if (loadingImage) return;
+
     const loadTopImagesUrls = async () => {
       if (remainingPhotos.length === 0 || loading) return;
+
+      // Check if the top photo has changed
+      const currentTopPhotoId = remainingPhotos[0]?.id || null;
+      const topPhotoChanged = currentTopPhotoId !== topPhotoIdRef.current;
+
+      // Update the ref with the current top photo ID
+      topPhotoIdRef.current = currentTopPhotoId;
+
+      // Only set loading if we actually need to load URLs
+      const topPhotos = remainingPhotos.slice(
+        0,
+        Math.min(2, remainingPhotos.length),
+      );
+
+      // Check if any of the top photos need their display URL loaded
+      const needsLoading = topPhotos.some((photo) => !photo.displayUrl);
+
+      if (!needsLoading && !topPhotoChanged) return;
 
       setLoadingImage(true);
 
       try {
-        // Load display URLs for the top two cards (or just one if that's all we have)
-        const topPhotos = remainingPhotos.slice(
-          0,
-          Math.min(2, remainingPhotos.length),
-        );
+        let urlsUpdated = false;
 
         for (const photo of topPhotos) {
           if (!photo.displayUrl) {
             photo.displayUrl = await getDisplayUrl(photo);
+            urlsUpdated = true;
           }
         }
 
-        // Force a re-render
-        setRemainingPhotos([...remainingPhotos]);
+        // Only update state if we actually changed something and it's not already being updated elsewhere
+        if (urlsUpdated && !topPhotoChanged) {
+          // Use a functional update to ensure we're working with the latest state
+          setRemainingPhotos((prevPhotos) => {
+            // Find the photos we updated and update them in the previous state
+            const updatedPhotos = [...prevPhotos];
+            for (const updatedPhoto of topPhotos) {
+              if (updatedPhoto.displayUrl) {
+                const index = updatedPhotos.findIndex(
+                  (p) => p.id === updatedPhoto.id,
+                );
+                if (index !== -1) {
+                  updatedPhotos[index] = {
+                    ...updatedPhotos[index],
+                    displayUrl: updatedPhoto.displayUrl,
+                  };
+                }
+              }
+            }
+            return updatedPhotos;
+          });
+        }
       } catch (error) {
         console.error("Error loading display URLs:", error);
       } finally {
@@ -247,7 +276,7 @@ export default function PhotoSwipeScreen() {
     };
 
     loadTopImagesUrls();
-  }, [remainingPhotos, loading]);
+  }, [remainingPhotos, loading, loadingImage]); // Include loadingImage to prevent concurrent loading attempts
 
   const renderCards = () => {
     if (loading) {

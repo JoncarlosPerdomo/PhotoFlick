@@ -16,7 +16,6 @@ import { useRouter } from "expo-router";
 import { usePhotoContext } from "../context/PhotoContext";
 import { getSafePhotoUrl, getSafeImageSource } from "../utils/photoUtils";
 
-// Extended Asset type that includes displayUrl
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
 }
@@ -29,43 +28,58 @@ export default function ConfirmDeleteScreen() {
   const [progress, setProgress] = useState<number>(0);
   const router = useRouter();
 
-  // Convert deletePile photos to have display URLs
   useEffect(() => {
+    if (loading && displayPhotos.length > 0) return;
+
     const preparePhotos = async () => {
       setLoading(true);
 
       try {
         const photos: AssetWithDisplayUrl[] = [];
+        const processedIds = new Set<string>();
 
-        // Process in smaller batches to avoid UI freeze
         for (let i = 0; i < deletePile.length; i += 20) {
-          const batch = deletePile.slice(i, i + 20);
+          const batch = deletePile
+            .slice(i, i + 20)
+            .filter((photo) => !processedIds.has(photo.id));
 
-          // Pre-load display URLs for each photo
+          if (batch.length === 0) continue;
+
           for (const photo of batch) {
             try {
-              // Use our utility function to get a safe URL
               const safeUrl = await getSafePhotoUrl(photo);
 
               photos.push({
                 ...photo,
                 displayUrl: safeUrl,
               });
+
+              processedIds.add(photo.id);
             } catch (error) {
               console.error(
                 `Error pre-loading URL for photo ${photo.id}:`,
                 error,
               );
-              // Still add the photo, but with an empty displayUrl
               photos.push({
                 ...photo,
                 displayUrl: "",
               });
+
+              processedIds.add(photo.id);
             }
           }
 
-          // Update display photos incrementally
-          setDisplayPhotos([...photos]);
+          setDisplayPhotos((prevPhotos) => {
+            const newPhotos = [...prevPhotos];
+
+            for (const photo of photos) {
+              if (!prevPhotos.some((p) => p.id === photo.id)) {
+                newPhotos.push(photo);
+              }
+            }
+
+            return newPhotos;
+          });
         }
       } catch (error) {
         console.error("Error preparing photos:", error);
@@ -100,10 +114,8 @@ export default function ConfirmDeleteScreen() {
       let completed = 0;
       let failed = 0;
 
-      // Delete photos one by one
       for (const photo of deletePile) {
         try {
-          // Using Expo's MediaLibrary to delete assets
           await MediaLibrary.deleteAssetsAsync([photo.id]);
 
           completed++;

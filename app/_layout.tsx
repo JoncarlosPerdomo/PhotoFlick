@@ -11,8 +11,9 @@ import { useRouter } from "expo-router";
 function AppContent() {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
-    useRouter();
-    return (
+  const router = useRouter();
+
+  return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
@@ -22,8 +23,17 @@ function AppContent() {
           },
           headerTintColor: colors.text,
           headerShadowVisible: !isDark,
+          headerTitleStyle: {
+            fontWeight: "600",
+            fontSize: 18,
+          },
           contentStyle: {
             backgroundColor: colors.background,
+          },
+          animation: "slide_from_right",
+          animationDuration: 200,
+          headerBackTitleStyle: {
+            fontSize: 16,
           },
         }}
       >
@@ -33,24 +43,35 @@ function AppContent() {
             title: "Photo Flicker",
           }}
         />
-          <Stack.Screen
+        <Stack.Screen
           name="photo-swipe/[dateGroup]"
           options={({ route }) => ({
             title: (route.params as { dateGroup: string }).dateGroup,
             headerBackTitle: "Back",
+            presentation: "card",
           })}
         />
         <Stack.Screen
           name="confirm-delete"
-          options={{ title: "Confirm Deletion" }}
+          options={{
+            title: "Confirm Deletion",
+            presentation: "modal",
+            animation: "slide_from_bottom",
+          }}
         />
-        <Stack.Screen name="settings" options={{ title: "Settings" }} />
+        <Stack.Screen
+          name="settings"
+          options={{
+            title: "Settings",
+            presentation: "card",
+          }}
+        />
       </Stack>
     </>
   );
 }
 
-export default function Layout() {
+export default function RootLayout() {
   return (
     <QueryClientProvider>
       <ThemeProvider>

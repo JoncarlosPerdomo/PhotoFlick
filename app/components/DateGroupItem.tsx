@@ -1,5 +1,11 @@
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet, Vibration } from "react-native";
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Vibration,
+  Animated,
+} from "react-native";
 import { DateGroup } from "@/types";
 import { getThemeColors } from "@/context/ThemeContext";
 
@@ -19,66 +25,101 @@ const DateGroupItem: React.FC<DateGroupItemProps> = ({
   isCompleted = false,
 }) => {
   const colors = getThemeColors(isDark);
+  const scale = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handleLongPress = () => {
-    Vibration.vibrate(50); // Short vibration for feedback
+    Vibration.vibrate(50);
     onLongPress(item);
   };
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.dateGroup,
-        { backgroundColor: colors.card },
-        isCompleted && styles.completedGroup,
-      ]}
-      onPress={() => onPress(item)}
-      onLongPress={handleLongPress}
-      delayLongPress={300}
-    >
-      <Text
+    <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
+      <TouchableOpacity
         style={[
-          styles.dateText,
-          { color: colors.text },
-          isCompleted && styles.completedText,
+          styles.dateGroup,
+          {
+            backgroundColor: colors.card,
+            shadowColor: colors.shadow,
+            borderColor: colors.border,
+          },
+          isCompleted && [
+            styles.completedGroup,
+            { borderColor: colors.success },
+          ],
         ]}
+        onPress={() => onPress(item)}
+        onLongPress={handleLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        delayLongPress={300}
+        activeOpacity={0.7}
       >
-        {item.date}
-      </Text>
-      <Text
-        style={[
-          styles.countText,
-          { color: colors.secondaryText },
-          isCompleted && styles.completedText,
-        ]}
-      >
-        {item.count} photos
-      </Text>
-    </TouchableOpacity>
+        <Text
+          style={[
+            styles.dateText,
+            { color: colors.text },
+            isCompleted && [
+              styles.completedText,
+              { color: colors.successDark },
+            ],
+          ]}
+        >
+          {item.date}
+        </Text>
+        <Text
+          style={[
+            styles.countText,
+            { color: colors.secondaryText },
+            isCompleted && styles.completedText,
+          ]}
+        >
+          {item.count} photos
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  dateGroup: {
-    borderRadius: 12,
-    padding: 16,
+  container: {
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+  },
+  dateGroup: {
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   dateText: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "600",
+    letterSpacing: -0.5,
   },
   countText: {
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 15,
+    marginTop: 6,
+    letterSpacing: -0.3,
   },
   completedGroup: {
-    opacity: 0.7,
+    borderWidth: 1,
+    opacity: 0.85,
   },
   completedText: {
     textDecorationLine: "line-through",

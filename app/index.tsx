@@ -77,29 +77,34 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <DeletePileButton
-        count={deletePile.length}
-        onPress={navigateToDeleteConfirm}
-        isDark={isDark}
-      />
-
       {isLoading ? (
         <LoadingIndicator message="Loading photo library..." isDark={isDark} />
       ) : (
-        <FlatList
-          data={dateGroups}
-          renderItem={({ item }) => (
-            <DateGroupItem
-              item={item}
-              onPress={navigateToPhotoSwipe}
-              onLongPress={handleLongPress}
-              isDark={isDark}
-              isCompleted={completedGroups.includes(item.date)}
-            />
-          )}
-          keyExtractor={(item) => item.date}
-          contentContainerStyle={styles.listContainer}
-        />
+        <>
+          <View>
+            {deletePile.length > 0 && (
+              <DeletePileButton
+                count={deletePile.length}
+                onPress={navigateToDeleteConfirm}
+                isDark={isDark}
+              />
+            )}
+          </View>
+          <FlatList
+            data={dateGroups}
+            renderItem={({ item }) => (
+              <DateGroupItem
+                item={item}
+                onPress={navigateToPhotoSwipe}
+                onLongPress={handleLongPress}
+                isDark={isDark}
+                isCompleted={completedGroups.includes(item.date)}
+              />
+            )}
+            keyExtractor={(item) => item.date}
+            contentContainerStyle={[styles.listContainer]}
+          />
+        </>
       )}
     </View>
   );
@@ -110,6 +115,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContainer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
 });

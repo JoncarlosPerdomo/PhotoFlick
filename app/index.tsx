@@ -29,8 +29,10 @@ const usePhotoPermissions = () => {
 };
 
 const usePhotoGroups = (permissionGranted: boolean) => {
+  const { deletePile } = useDeletePile();
+
   return useQuery({
-    queryKey: ["photoGroups"],
+    queryKey: ["photoGroups", deletePile.length],
     queryFn: async () => {
       // Get all photos
       const assets = await MediaLibrary.getAssetsAsync({
@@ -39,8 +41,15 @@ const usePhotoGroups = (permissionGranted: boolean) => {
         sortBy: [MediaLibrary.SortBy.creationTime],
       });
 
+      const filteredAssets = assets.assets.filter(
+        (asset) =>
+          !deletePile.some(
+            (deletedPhoto: MediaLibrary.Asset) => deletedPhoto.id === asset.id,
+          ),
+      );
+
       // Group photos by month and year
-      const groupedByDate = assets.assets.reduce<
+      const groupedByDate = filteredAssets.reduce<
         Record<string, MediaLibrary.Asset[]>
       >((groups, photo) => {
         const date = new Date(photo.creationTime);
@@ -72,7 +81,7 @@ const usePhotoGroups = (permissionGranted: boolean) => {
         return dateB.getTime() - dateA.getTime();
       });
 
-      return dateGroupsArray;
+      return dateGroupsArray.filter((group) => group.count > 0);
     },
     enabled: permissionGranted === true,
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -13,200 +13,143 @@ import {
 } from "react-native";
 import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
-import { usePhotoContext } from "../context/PhotoContext";
-import { getSafePhotoUrl, getSafeImageSource } from "../utils/photoUtils";
+import { getSafeImageSource } from "../utils/photoUtils";
+import { useDeletePile, usePhotoDelete } from "../utils/queryHooks";
 
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
 }
 
 export default function ConfirmDeleteScreen() {
-  const { deletePile, clearDeletePile } = usePhotoContext();
-  const [displayPhotos, setDisplayPhotos] = useState<AssetWithDisplayUrl[]>([]);
-  const [deleting, setDeleting] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [progress, setProgress] = useState<number>(0);
   const router = useRouter();
+  const [progress, setProgress] = useState<number>(0);
 
-  useEffect(() => {
-    if (loading && displayPhotos.length > 0) return;
-
-    const preparePhotos = async () => {
-      setLoading(true);
-
-      try {
-        const photos: AssetWithDisplayUrl[] = [];
-        const processedIds = new Set<string>();
-
-        for (let i = 0; i < deletePile.length; i += 20) {
-          const batch = deletePile
-            .slice(i, i + 20)
-            .filter((photo) => !processedIds.has(photo.id));
-
-          if (batch.length === 0) continue;
-
-          for (const photo of batch) {
-            try {
-              const safeUrl = await getSafePhotoUrl(photo);
-
-              photos.push({
-                ...photo,
-                displayUrl: safeUrl,
-              });
-
-              processedIds.add(photo.id);
-            } catch (error) {
-              console.error(
-                `Error pre-loading URL for photo ${photo.id}:`,
-                error,
-              );
-              photos.push({
-                ...photo,
-                displayUrl: "",
-              });
-
-              processedIds.add(photo.id);
-            }
-          }
-
-          setDisplayPhotos((prevPhotos) => {
-            const newPhotos = [...prevPhotos];
-
-            for (const photo of photos) {
-              if (!prevPhotos.some((p) => p.id === photo.id)) {
-                newPhotos.push(photo);
-              }
-            }
-
-            return newPhotos;
-          });
-        }
-      } catch (error) {
-        console.error("Error preparing photos:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    preparePhotos();
-  }, [deletePile]);
+  const {
+    deletePile,
+    isLoading: isLoadingDeletePile,
+    clearDeletePile,
+  } = useDeletePile();
+  const {
+    deletePhotos,
+    isDeleting,
+    deleteError,
+    isDeleteSuccess,
+    resetDeleteState,
+  } = usePhotoDelete();
 
   const confirmDelete = () => {
-    if (deletePile.length === 0) {
-      Alert.alert("Nothing to Delete", "Your delete pile is empty.");
-      return;
-    }
-
     Alert.alert(
       "Confirm Deletion",
-      `Are you sure you want to delete ${deletePile.length} photos? This cannot be undone.`,
+      `Are you sure you want to delete ${deletePile.length} photos?`,
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: performDelete },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: performDelete,
+        },
       ],
     );
   };
 
   const performDelete = async (): Promise<void> => {
-    setDeleting(true);
+    if (deletePile.length === 0) {
+      Alert.alert("No Photos", "There are no photos to delete.");
+      return;
+    }
 
     try {
-      let completed = 0;
-      let failed = 0;
-
-      for (const photo of deletePile) {
-        try {
-          await MediaLibrary.deleteAssetsAsync([photo.id]);
-
-          completed++;
-          setProgress(completed / deletePile.length);
-        } catch (error) {
-          console.error(`Failed to delete photo ${photo.id}:`, error);
-          failed++;
-        }
-      }
+      await deletePhotos(deletePile);
 
       clearDeletePile();
 
-      if (failed > 0) {
-        Alert.alert(
-          "Deletion Partial",
-          `Successfully deleted ${completed} photos. Failed to delete ${failed} photos.`,
-          [{ text: "OK", onPress: () => router.replace("/") }],
-        );
-      } else {
-        Alert.alert(
-          "Deletion Complete",
-          `Successfully deleted ${completed} photos.`,
-          [{ text: "OK", onPress: () => router.replace("/") }],
-        );
-      }
+      Alert.alert("Success", `${deletePile.length} photos have been deleted.`, [
+        { text: "OK", onPress: () => router.back() },
+      ]);
     } catch (error) {
-      console.error("Error during deletion:", error);
-      Alert.alert("Error", "Failed to delete photos. Please try again.");
-    } finally {
-      setDeleting(false);
+      console.error("Error deleting photos:", error);
+      Alert.alert("Error", "Failed to delete some photos. Please try again.", [
+        { text: "OK" },
+      ]);
     }
   };
 
   const renderPhoto = ({ item }: ListRenderItemInfo<AssetWithDisplayUrl>) => (
-    <Image
-      source={getSafeImageSource(item.displayUrl, item.uri)}
-      style={styles.thumbnail}
-    />
+    <View style={styles.photoContainer}>
+      <Image
+        source={getSafeImageSource(item.displayUrl, item.uri)}
+        style={styles.photo}
+        resizeMode="cover"
+      />
+    </View>
   );
 
-  if (deleting) {
+  if (isLoadingDeletePile) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>
-          Deleting photos... {Math.round(progress * 100)}%
-        </Text>
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading photos...</Text>
       </View>
     );
   }
 
-  if (loading && displayPhotos.length === 0) {
+  if (isDeleting) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>Loading photos...</Text>
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#FF3B30" />
+        <Text style={styles.deletingText}>Deleting photos...</Text>
+        {progress > 0 && (
+          <Text style={styles.progressText}>
+            {Math.round(progress * 100)}% complete
+          </Text>
+        )}
+      </View>
+    );
+  }
+
+  if (deletePile.length === 0) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.emptyText}>No photos in delete pile</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {deletePile.length} Photos in Delete Pile
-        {loading &&
-        displayPhotos.length > 0 &&
-        displayPhotos.length < deletePile.length
-          ? ` (Loading ${displayPhotos.length}/${deletePile.length})`
-          : ""}
-      </Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Delete Pile</Text>
+        <Text style={styles.subtitle}>
+          {deletePile.length} photo{deletePile.length !== 1 ? "s" : ""} selected
+          for deletion
+        </Text>
+      </View>
 
       <FlatList
-        data={displayPhotos}
+        data={deletePile as AssetWithDisplayUrl[]}
         renderItem={renderPhoto}
         keyExtractor={(item) => item.id}
         numColumns={3}
         contentContainerStyle={styles.photoGrid}
       />
 
-      <View style={styles.buttonContainer}>
+      <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
+          style={styles.cancelButton}
           onPress={() => router.back()}
         >
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.deleteButton]}
-          onPress={confirmDelete}
-        >
+        <TouchableOpacity style={styles.deleteButton} onPress={confirmDelete}>
           <Text style={styles.deleteButtonText}>Delete All</Text>
         </TouchableOpacity>
       </View>
@@ -214,61 +157,110 @@ export default function ConfirmDeleteScreen() {
   );
 }
 
+const { width } = Dimensions.get("window");
+const photoSize = width / 3 - 12;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  header: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    backgroundColor: "white",
+  },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    textAlign: "center",
-    marginVertical: 16,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
   },
   photoGrid: {
-    padding: 4,
+    padding: 8,
   },
-  thumbnail: {
-    width: (Dimensions.get("window").width - 24) / 3,
-    height: (Dimensions.get("window").width - 24) / 3,
-    margin: 2,
-    borderRadius: 4,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 16,
-  },
-  button: {
-    flex: 1,
-    padding: 16,
+  photoContainer: {
+    margin: 4,
     borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 8,
-  },
-  cancelButton: {
+    overflow: "hidden",
     backgroundColor: "#e0e0e0",
   },
-  deleteButton: {
-    backgroundColor: "#ff3b30",
+  photo: {
+    width: photoSize,
+    height: photoSize,
+  },
+  footer: {
+    flexDirection: "row",
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+    backgroundColor: "white",
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 8,
+    padding: 12,
+    marginRight: 8,
+    alignItems: "center",
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
   },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: "#FF3B30",
+    borderRadius: 8,
+    padding: 12,
+    marginLeft: 8,
+    alignItems: "center",
+  },
   deleteButtonText: {
     fontSize: 16,
     fontWeight: "bold",
     color: "white",
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   loadingText: {
-    marginTop: 16,
+    marginTop: 10,
     fontSize: 16,
+    color: "#666",
+  },
+  deletingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#FF3B30",
+  },
+  progressText: {
+    marginTop: 5,
+    fontSize: 14,
+    color: "#666",
+  },
+  emptyText: {
+    fontSize: 18,
+    color: "#666",
+    marginBottom: 16,
+  },
+  backButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
+    width: 150,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "white",
   },
 });

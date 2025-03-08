@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,12 @@ import {
   PanResponder,
   Dimensions,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as MediaLibrary from "expo-media-library";
-import { usePhotoContext } from "../../context/PhotoContext";
-import { getSafePhotoUrl, getSafeImageSource } from "../../utils/photoUtils";
+import { getSafeImageSource } from "../../utils/photoUtils";
+import { usePhotoSwipe, useDeletePile } from "../../utils/queryHooks";
 
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
@@ -30,108 +31,23 @@ export default function PhotoSwipeScreen() {
   const params = useLocalSearchParams();
   const dateGroup = params.dateGroup as string;
   const photoIds = params.photoIds as string;
-
-  const [photos, setPhotos] = useState<AssetWithDisplayUrl[]>([]);
-  const [remainingPhotos, setRemainingPhotos] = useState<AssetWithDisplayUrl[]>(
-    [],
-  );
-  const [loading, setLoading] = useState<boolean>(true);
-  const [loadingImage, setLoadingImage] = useState<boolean>(false);
-  const { addToDeletePile, saveDeletePile, deletePile, loadDeletePile } =
-    usePhotoContext();
   const router = useRouter();
-  const topPhotoIdRef = useRef<string | null>(null);
+
+  const { deletePile, addToDeletePile } = useDeletePile();
+  const {
+    data: photos = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = usePhotoSwipe(dateGroup, photoIds, deletePile);
+
   const position = useRef(new Animated.ValueXY()).current;
   const rotation = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: ["-10deg", "0deg", "10deg"],
     extrapolate: "clamp",
   });
-
-  useEffect(() => {
-    loadDeletePile();
-  }, []);
-
-  useEffect(() => {
-    const loadPhotos = async () => {
-      try {
-        if (!photoIds) {
-          setLoading(false);
-          return;
-        }
-
-        const parsedPhotoIds = JSON.parse(photoIds);
-        const photoAssets: AssetWithDisplayUrl[] = [];
-
-        // Load photos in batches to avoid performance issues
-        for (let i = 0; i < parsedPhotoIds.length; i += 100) {
-          const batch = parsedPhotoIds.slice(i, i + 100);
-          const assets = await MediaLibrary.getAssetsAsync({
-            mediaType: MediaLibrary.MediaType.photo,
-            first: batch.length,
-            // Use a filter to get only the assets with IDs in our batch
-            // since assetIds is not a valid property
-            sortBy: [MediaLibrary.SortBy.creationTime],
-          });
-
-          // Filter the assets to only include those in our batch
-          // and exclude those already in the delete pile
-          const filteredAssets = assets.assets.filter(
-            (asset) =>
-              batch.includes(asset.id) &&
-              !deletePile.some((deletedPhoto) => deletedPhoto.id === asset.id),
-          );
-
-          // Process each asset to get a safe display URL
-          for (const asset of filteredAssets) {
-            const assetWithUrl: AssetWithDisplayUrl = {
-              ...asset,
-              displayUrl: undefined,
-            };
-
-            try {
-              assetWithUrl.displayUrl = await getSafePhotoUrl(asset);
-            } catch (error) {
-              console.error(
-                `Error pre-loading URL for asset ${asset.id}:`,
-                error,
-              );
-            }
-
-            photoAssets.push(assetWithUrl);
-          }
-        }
-
-        setPhotos(photoAssets);
-        setRemainingPhotos(photoAssets);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error loading photos:", error);
-        setLoading(false);
-      }
-    };
-
-    loadPhotos();
-  }, [photoIds, deletePile]);
-
-  // This function gets a proper display URL for an asset
-  const getDisplayUrl = async (asset: AssetWithDisplayUrl): Promise<string> => {
-    if (asset.displayUrl) {
-      return asset.displayUrl;
-    }
-
-    try {
-      const safeUrl = await getSafePhotoUrl(asset);
-
-      // Cache the display URL
-      asset.displayUrl = safeUrl;
-
-      return safeUrl;
-    } catch (error) {
-      console.error("Error getting asset info:", error);
-      return "";
-    }
-  };
 
   const likeOpacity = position.x.interpolate({
     inputRange: [0, SCREEN_WIDTH / 4],
@@ -197,127 +113,64 @@ export default function PhotoSwipeScreen() {
     }).start(() => onSwipeComplete("right"));
   };
 
-  const onSwipeComplete = async (direction: "left" | "right") => {
-    if (remainingPhotos.length === 0) return;
+  const onSwipeComplete = (direction: "left" | "right") => {
+    if (photos.length === 0) return;
 
-    const photo = remainingPhotos[0];
+    const photo = photos[0];
 
     if (direction === "left") {
       addToDeletePile(photo);
-      await saveDeletePile();
     }
 
-    const newRemainingPhotos = remainingPhotos.slice(1);
-    setRemainingPhotos(newRemainingPhotos);
+    // Remove the top photo by refetching - the usePhotoSwipe hook
+    // will automatically filter out photos in the delete pile
+    refetch();
 
     position.setValue({ x: 0, y: 0 });
 
-    if (newRemainingPhotos.length === 0) {
+    if (photos.length <= 1) {
       router.back();
     }
   };
 
-  // Load display URLs for the top two cards
-  useEffect(() => {
-    if (loadingImage) return;
+  if (isError) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.errorText}>
+          Error loading photos: {error.message}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-    const loadTopImagesUrls = async () => {
-      if (remainingPhotos.length === 0 || loading) return;
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading photos...</Text>
+      </View>
+    );
+  }
 
-      // Check if the top photo has changed
-      const currentTopPhotoId = remainingPhotos[0]?.id || null;
-      const topPhotoChanged = currentTopPhotoId !== topPhotoIdRef.current;
-
-      // Update the ref with the current top photo ID
-      topPhotoIdRef.current = currentTopPhotoId;
-
-      // Only set loading if we actually need to load URLs
-      const topPhotos = remainingPhotos.slice(
-        0,
-        Math.min(2, remainingPhotos.length),
-      );
-
-      // Check if any of the top photos need their display URL loaded
-      const needsLoading = topPhotos.some((photo) => !photo.displayUrl);
-
-      if (!needsLoading && !topPhotoChanged) return;
-
-      setLoadingImage(true);
-
-      try {
-        let urlsUpdated = false;
-
-        for (const photo of topPhotos) {
-          if (!photo.displayUrl) {
-            photo.displayUrl = await getDisplayUrl(photo);
-            urlsUpdated = true;
-          }
-        }
-
-        // Only update state if we actually changed something and it's not already being updated elsewhere
-        if (urlsUpdated && !topPhotoChanged) {
-          // Use a functional update to ensure we're working with the latest state
-          setRemainingPhotos((prevPhotos) => {
-            // Find the photos we updated and update them in the previous state
-            const updatedPhotos = [...prevPhotos];
-            for (const updatedPhoto of topPhotos) {
-              if (updatedPhoto.displayUrl) {
-                const index = updatedPhotos.findIndex(
-                  (p) => p.id === updatedPhoto.id,
-                );
-                if (index !== -1) {
-                  updatedPhotos[index] = {
-                    ...updatedPhotos[index],
-                    displayUrl: updatedPhoto.displayUrl,
-                  };
-                }
-              }
-            }
-            return updatedPhotos;
-          });
-        }
-      } catch (error) {
-        console.error("Error loading display URLs:", error);
-      } finally {
-        setLoadingImage(false);
-      }
-    };
-
-    loadTopImagesUrls();
-  }, [remainingPhotos, loading, loadingImage]); // Include loadingImage to prevent concurrent loading attempts
-
-  const renderCards = () => {
-    if (loading) {
-      return (
-        <View style={styles.endOfStack}>
-          <Text style={styles.endOfStackText}>Loading photos...</Text>
-        </View>
-      );
-    }
-
-    if (remainingPhotos.length === 0) {
-      return (
+  if (photos.length === 0) {
+    return (
+      <View style={styles.container}>
         <View style={styles.endOfStack}>
           <Text style={styles.endOfStackText}>
             No more photos in this period
           </Text>
         </View>
-      );
-    }
+      </View>
+    );
+  }
 
-    return remainingPhotos
+  const renderCards = () => {
+    return photos
       .map((photo, index) => {
         if (index === 0) {
-          // Show loading indicator if we're still getting the display URL
-          if (loadingImage && !photo.displayUrl) {
-            return (
-              <View key={photo.id} style={[styles.card, styles.loadingCard]}>
-                <ActivityIndicator size="large" color="#007AFF" />
-                <Text style={styles.loadingText}>Loading photo...</Text>
-              </View>
-            );
-          }
-
           return (
             <Animated.View
               key={photo.id}
@@ -379,9 +232,8 @@ export default function PhotoSwipeScreen() {
               />
             </Animated.View>
           );
-        } else {
-          return null;
         }
+        return null;
       })
       .reverse();
   };
@@ -394,9 +246,7 @@ export default function PhotoSwipeScreen() {
         <Text style={styles.instructions}>
           Swipe LEFT to DELETE, swipe RIGHT to KEEP
         </Text>
-        <Text style={styles.counter}>
-          {remainingPhotos.length} photos remaining
-        </Text>
+        <Text style={styles.counter}>{photos.length} photos remaining</Text>
       </View>
     </View>
   );
@@ -406,6 +256,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
   },
   cardContainer: {
     flex: 1,
@@ -425,10 +280,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     overflow: "hidden",
-  },
-  loadingCard: {
-    justifyContent: "center",
-    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
@@ -488,5 +339,22 @@ const styles = StyleSheet.create({
   counter: {
     fontSize: 14,
     color: "#888",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ff3b30",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#007AFF",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  retryButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

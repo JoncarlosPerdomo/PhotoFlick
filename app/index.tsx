@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -8,52 +8,28 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
-import { usePhotoContext } from "../context/PhotoContext";
 import { DateGroup } from "../types";
 import { useQuery } from "@tanstack/react-query";
+import { useDeletePile } from "../utils/queryHooks";
+import * as MediaLibrary from "expo-media-library";
 
-export default function HomeScreen() {
-  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(
-    null,
-  );
-  const { deletePile, loadDeletePile } = usePhotoContext();
-  const router = useRouter();
-
-  // Load delete pile when component mounts
-  useEffect(() => {
-    loadDeletePile();
-    requestPermissions();
-  }, []);
-
-  const requestPermissions = async (): Promise<void> => {
-    try {
+const usePhotoPermissions = () => {
+  return useQuery({
+    queryKey: ["photoPermissions"],
+    queryFn: async () => {
       const { status } = await MediaLibrary.requestPermissionsAsync();
-      setPermissionGranted(status === "granted");
+      return {
+        granted: status === "granted",
+        status,
+      };
+    },
+  });
+};
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "This app needs access to your photo library to organize photos.",
-          [{ text: "OK" }],
-        );
-      }
-    } catch (error) {
-      console.error("Error requesting permissions:", error);
-      setPermissionGranted(false);
-    }
-  };
-
-  // Use React Query to fetch photos
-  const {
-    data: dateGroups = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["photoDateGroups"],
+const usePhotoGroups = (permissionGranted: boolean) => {
+  return useQuery({
+    queryKey: ["photoGroups"],
     queryFn: async () => {
       // Get all photos
       const assets = await MediaLibrary.getAssetsAsync({
@@ -97,18 +73,48 @@ export default function HomeScreen() {
 
       return dateGroupsArray;
     },
-    enabled: permissionGranted === true, // Only run query when permission is granted
+    enabled: permissionGranted === true,
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
+};
 
-  // Show error state
-  if (isError) {
+export default function HomeScreen() {
+  const router = useRouter();
+
+  const { deletePile } = useDeletePile();
+  const { data: permissionResult, isLoading: isLoadingPermission } =
+    usePhotoPermissions();
+
+  const {
+    data: dateGroups = [],
+    isLoading: isLoadingPhotos,
+    isError,
+    error,
+    refetch,
+  } = usePhotoGroups(permissionResult?.granted || false);
+
+  const isLoading = isLoadingPermission || isLoadingPhotos;
+
+  if (!isLoading && isError) {
     console.error("Error fetching photos:", error);
     return (
       <View style={[styles.container, styles.centerContent]}>
         <Text style={styles.errorText}>Error loading photos</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!isLoading && permissionResult && !permissionResult.granted) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.errorText}>
+          This app needs access to your photo library to organize photos.
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryButtonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
     );

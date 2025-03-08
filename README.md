@@ -1,50 +1,76 @@
-# Welcome to your Expo app 👋
+# PhotoFlick
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+PhotoFlick is a sleek and modern photo management application built with Expo and React Native. The app helps users organize and manage their photo library efficiently, with a focus on providing an intuitive user experience.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Photo Organization**: Photos are automatically grouped by date for easy browsing
+- **Photo Viewing**: Smooth swipe interface for browsing through photos
+- **Delete Management**: "Delete Pile" feature to mark photos for deletion and confirm in batches
+- **Dark/Light Theme**: Supports both dark and light modes for comfortable viewing in any environment
+- **Permission Handling**: Properly requests and manages photo library access permissions
+
+## Tech Stack
+
+- [React Native](https://reactnative.dev/) - Core UI framework
+- [Expo](https://expo.dev/) - Development platform and build tools
+- [Expo Router](https://docs.expo.dev/router/introduction/) - File-based routing
+- [TanStack Query](https://tanstack.com/query) - Data fetching and state management
+- [Expo Media Library](https://docs.expo.dev/versions/latest/sdk/media-library/) - Access to photo library
+- [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/) - Animations
+- [Expo Blur](https://docs.expo.dev/versions/latest/sdk/blur-view/) - UI effects
+- [Async Storage](https://react-native-async-storage.github.io/async-storage/) - Persistent storage
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (LTS version recommended)
+- [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
+- [Expo CLI](https://docs.expo.dev/get-started/installation/)
+- iOS Simulator or Android Emulator (optional, for testing)
+
+### Installation
+
+1. Clone the repository
+
+   ```bash
+   git clone https://github.com/yourusername/PhotoFlick.git
+   cd PhotoFlick
+   ```
+
+2. Install dependencies
 
    ```bash
    npm install
+   # or
+   yarn install
    ```
 
-2. Start the app
+3. Start the development server
 
    ```bash
-    npx expo start
+   npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. Run on your device:
+   - For iOS: Press `i` in the terminal or scan the QR code with the Camera app
+   - For Android: Press `a` in the terminal or scan the QR code with the Expo Go app
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Project Structure
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- `/app` - Main application screens and components (using file-based routing)
+- `/components` - Reusable UI components
+- `/context` - React Context providers (Theme, Photos)
+- `/types` - TypeScript type definitions
+- `/utils` - Utility functions, hooks, and helper methods
 
-## Get a fresh project
+## License
 
-When you're ready, run:
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-```bash
-npm run reset-project
-```
+## Acknowledgments
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Built with [Expo](https://expo.dev/)
+- Uses [Expo Router](https://docs.expo.dev/router/introduction/) for navigation
+- Photo management with [Expo Media Library](https://docs.expo.dev/versions/latest/sdk/media-library/)

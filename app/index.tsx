@@ -13,6 +13,7 @@ import { DateGroup } from "../types";
 import { useQuery } from "@tanstack/react-query";
 import { useDeletePile } from "../utils/queryHooks";
 import * as MediaLibrary from "expo-media-library";
+import { useTheme, getThemeColors } from "../context/ThemeContext";
 
 const usePhotoPermissions = () => {
   return useQuery({
@@ -80,6 +81,8 @@ const usePhotoGroups = (permissionGranted: boolean) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isDark } = useTheme();
+  const colors = getThemeColors(isDark);
 
   const { deletePile } = useDeletePile();
   const { data: permissionResult, isLoading: isLoadingPermission } =
@@ -98,9 +101,20 @@ export default function HomeScreen() {
   if (!isLoading && isError) {
     console.error("Error fetching photos:", error);
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.errorText}>Error loading photos</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <Text style={[styles.errorText, { color: colors.danger }]}>
+          Error loading photos
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          onPress={() => refetch()}
+        >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -109,11 +123,20 @@ export default function HomeScreen() {
 
   if (!isLoading && permissionResult && !permissionResult.granted) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.errorText}>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <Text style={[styles.errorText, { color: colors.danger }]}>
           This app needs access to your photo library to organize photos.
         </Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          onPress={() => refetch()}
+        >
           <Text style={styles.retryButtonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
@@ -133,19 +156,21 @@ export default function HomeScreen() {
 
   const renderDateGroup = ({ item }: { item: DateGroup }) => (
     <TouchableOpacity
-      style={styles.dateGroup}
+      style={[styles.dateGroup, { backgroundColor: colors.card }]}
       onPress={() => navigateToPhotoSwipe(item)}
     >
-      <Text style={styles.dateText}>{item.date}</Text>
-      <Text style={styles.countText}>{item.count} photos</Text>
+      <Text style={[styles.dateText, { color: colors.text }]}>{item.date}</Text>
+      <Text style={[styles.countText, { color: colors.secondaryText }]}>
+        {item.count} photos
+      </Text>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {deletePile.length > 0 && (
         <TouchableOpacity
-          style={styles.deletePileButton}
+          style={[styles.deletePileButton, { backgroundColor: colors.danger }]}
           onPress={() => router.push("/confirm-delete")}
         >
           <Text style={styles.deletePileText}>
@@ -156,8 +181,10 @@ export default function HomeScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Loading photo library...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.secondaryText }]}>
+            Loading photo library...
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -174,7 +201,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   centerContent: {
     justifyContent: "center",
@@ -189,13 +215,11 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
   },
   listContainer: {
     padding: 16,
   },
   dateGroup: {
-    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -211,11 +235,9 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontSize: 14,
-    color: "#777",
     marginTop: 4,
   },
   deletePileButton: {
-    backgroundColor: "#ff3b30",
     padding: 12,
     margin: 16,
     borderRadius: 8,
@@ -228,12 +250,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: "#ff3b30",
     marginBottom: 16,
     textAlign: "center",
   },
   retryButton: {
-    backgroundColor: "#007AFF",
     padding: 12,
     borderRadius: 8,
     alignItems: "center",

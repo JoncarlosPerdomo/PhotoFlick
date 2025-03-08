@@ -36,14 +36,28 @@ export const usePhotoGroups = (permissionGranted: boolean) => {
   return useQuery({
     queryKey: [queryKeys.photoGroups, deletePile.length],
     queryFn: async () => {
-      // Get all photos
-      const assets = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.photo,
-        first: 10000, // Adjust based on performance needs
-        sortBy: [MediaLibrary.SortBy.creationTime],
-      });
+      // Get all photos with pagination
+      let allAssets: MediaLibrary.Asset[] = [];
+      let hasNextPage = true;
+      let cursor: string | undefined = undefined;
 
-      const filteredAssets = assets.assets.filter(
+      while (hasNextPage) {
+        const result = await MediaLibrary.getAssetsAsync({
+          mediaType: MediaLibrary.MediaType.photo,
+          first: 500,
+          sortBy: [MediaLibrary.SortBy.creationTime],
+          after: cursor,
+        });
+
+        allAssets = [...allAssets, ...result.assets];
+        hasNextPage = result.hasNextPage;
+        cursor = result.endCursor;
+
+        // Safety check to prevent infinite loops
+        if (!result.assets.length) break;
+      }
+
+      const filteredAssets = allAssets.filter(
         (asset) =>
           !deletePile.some(
             (deletedPhoto: MediaLibrary.Asset) => deletedPhoto.id === asset.id,
@@ -95,16 +109,31 @@ export const usePhotosByDate = () => {
   return useQuery({
     queryKey: [queryKeys.photos],
     queryFn: async () => {
-      const { assets } = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.photo,
-        first: 1000,
-        sortBy: [MediaLibrary.SortBy.creationTime],
-      });
+      // Get all photos with pagination
+      let allAssets: MediaLibrary.Asset[] = [];
+      let hasNextPage = true;
+      let cursor: string | undefined = undefined;
+
+      while (hasNextPage) {
+        const result = await MediaLibrary.getAssetsAsync({
+          mediaType: MediaLibrary.MediaType.photo,
+          first: 500, // Smaller batch size for better performance
+          sortBy: [MediaLibrary.SortBy.creationTime],
+          after: cursor,
+        });
+
+        allAssets = [...allAssets, ...result.assets];
+        hasNextPage = result.hasNextPage;
+        cursor = result.endCursor;
+
+        // Safety check to prevent infinite loops
+        if (!result.assets.length) break;
+      }
 
       // Group photos by date
       const photosByDate: Record<string, MediaLibrary.Asset[]> = {};
 
-      for (const asset of assets) {
+      for (const asset of allAssets) {
         const date = new Date(asset.creationTime * 1000)
           .toISOString()
           .split("T")[0];
@@ -127,14 +156,29 @@ export const usePhotosByDateGroup = (
   return useQuery({
     queryKey: queryKeys.photosByDate(dateGroup),
     queryFn: async () => {
-      const { assets } = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.photo,
-        first: 1000,
-        sortBy: [MediaLibrary.SortBy.creationTime],
-      });
+      // Get all photos with pagination
+      let allAssets: MediaLibrary.Asset[] = [];
+      let hasNextPage = true;
+      let cursor: string | undefined = undefined;
+
+      while (hasNextPage) {
+        const result = await MediaLibrary.getAssetsAsync({
+          mediaType: MediaLibrary.MediaType.photo,
+          first: 500, // Smaller batch size for better performance
+          sortBy: [MediaLibrary.SortBy.creationTime],
+          after: cursor,
+        });
+
+        allAssets = [...allAssets, ...result.assets];
+        hasNextPage = result.hasNextPage;
+        cursor = result.endCursor;
+
+        // Safety check to prevent infinite loops
+        if (!result.assets.length) break;
+      }
 
       // Filter by date and exclude photos in delete pile
-      const filteredAssets = assets.filter((asset) => {
+      const filteredAssets = allAssets.filter((asset) => {
         const assetDate = new Date(asset.creationTime * 1000)
           .toISOString()
           .split("T")[0];
@@ -181,19 +225,39 @@ export const usePhotoSwipe = (
         const parsedPhotoIds = JSON.parse(photoIds);
         const photoAssets: AssetWithDisplayUrl[] = [];
 
-        // Load photos in batches to avoid performance issues
-        for (let i = 0; i < parsedPhotoIds.length; i += 100) {
-          const batch = parsedPhotoIds.slice(i, i + 100);
-          const assets = await MediaLibrary.getAssetsAsync({
-            mediaType: MediaLibrary.MediaType.photo,
-            first: batch.length,
-            sortBy: [MediaLibrary.SortBy.creationTime],
-          });
+        // Process photos in smaller batches (50) for better reliability
+        for (let i = 0; i < parsedPhotoIds.length; i += 50) {
+          const batchIds = parsedPhotoIds.slice(i, i + 50);
 
-          // Filter the assets to exclude those in the delete pile
-          const filteredAssets = assets.assets.filter(
+          // For each batch, get all photos and filter them
+          let allAssets: MediaLibrary.Asset[] = [];
+          let hasNextPage = true;
+          let cursor: string | undefined = undefined;
+
+          while (hasNextPage) {
+            const result = await MediaLibrary.getAssetsAsync({
+              mediaType: MediaLibrary.MediaType.photo,
+              first: 500,
+              sortBy: [MediaLibrary.SortBy.creationTime],
+              after: cursor,
+            });
+
+            allAssets = [...allAssets, ...result.assets];
+            hasNextPage = result.hasNextPage;
+            cursor = result.endCursor;
+
+            // If we've found all photos in the current batch, no need to continue
+            const foundAllInBatch = batchIds.every((id: string) =>
+              allAssets.some((asset) => asset.id === id),
+            );
+
+            if (foundAllInBatch || !result.assets.length) break;
+          }
+
+          // Filter the assets to include only those in the current batch and exclude those in the delete pile
+          const filteredAssets = allAssets.filter(
             (asset) =>
-              batch.includes(asset.id) &&
+              batchIds.includes(asset.id) &&
               !deletePile.some((deletedPhoto) => deletedPhoto.id === asset.id),
           );
 
@@ -210,13 +274,14 @@ export const usePhotoSwipe = (
           }
         }
 
-        return photoAssets;
+        // Sort by creation time (newest first)
+        return photoAssets.sort((a, b) => b.creationTime - a.creationTime);
       } catch (error) {
-        console.error("Error loading photos:", error);
+        console.error("Error in usePhotoSwipe:", error);
         throw error;
       }
     },
-    enabled: !!photoIds && !!dateGroup,
+    enabled: !!dateGroup && !!photoIds,
   });
 };
 

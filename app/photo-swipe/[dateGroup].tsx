@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -35,6 +35,8 @@ export default function PhotoSwipeScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
+
+  const [processedPhotoIds, setProcessedPhotoIds] = useState<string[]>([]);
 
   const { deletePile, addToDeletePile } = useDeletePile();
   const {
@@ -117,24 +119,28 @@ export default function PhotoSwipeScreen() {
   };
 
   const onSwipeComplete = (direction: "left" | "right") => {
-    if (photos.length === 0) return;
+    if (displayPhotos.length === 0) return;
 
-    const photo = photos[0];
+    const photo = displayPhotos[0];
 
     if (direction === "left") {
       addToDeletePile(photo);
     }
 
-    // Remove the top photo by refetching - the usePhotoSwipe hook
-    // will automatically filter out photos in the delete pile
-    refetch();
+    // For both directions, mark the photo as processed
+    setProcessedPhotoIds((prev) => [...prev, photo.id]);
 
+    // Reset position immediately for the next card
     position.setValue({ x: 0, y: 0 });
 
-    if (photos.length <= 1) {
+    if (displayPhotos.length <= 1) {
       router.back();
     }
   };
+
+  const displayPhotos = photos.filter(
+    (photo) => !processedPhotoIds.includes(photo.id),
+  );
 
   if (isError) {
     return (
@@ -167,7 +173,7 @@ export default function PhotoSwipeScreen() {
     );
   }
 
-  if (photos.length === 0) {
+  if (displayPhotos.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View
@@ -187,7 +193,7 @@ export default function PhotoSwipeScreen() {
   }
 
   const renderCards = () => {
-    return photos
+    return displayPhotos
       .map((photo, index) => {
         if (index === 0) {
           return (
@@ -270,7 +276,7 @@ export default function PhotoSwipeScreen() {
           Swipe LEFT to DELETE, swipe RIGHT to KEEP
         </Text>
         <Text style={[styles.counter, { color: colors.secondaryText }]}>
-          {photos.length} photos remaining
+          {displayPhotos.length} photos remaining
         </Text>
       </View>
     </View>

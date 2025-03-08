@@ -12,6 +12,34 @@ interface ThemeContextType {
   isDark: boolean;
 }
 
+// Color constants
+const COLORS = {
+  light: {
+    background: "#f5f5f5",
+    card: "#ffffff",
+    text: "#000000",
+    secondaryText: "#777777",
+    border: "#e0e0e0",
+    divider: "#e0e0e0",
+  },
+  dark: {
+    background: "#121212",
+    card: "#1e1e1e",
+    text: "#e0e0e0",
+    secondaryText: "#a0a0a0",
+    border: "#2c2c2c",
+    divider: "#2c2c2c",
+  },
+  shared: {
+    primary: "#007AFF",
+    danger: "#ff3b30",
+    success: "#34c759",
+    warning: "#ffcc00",
+  },
+};
+
+const THEME_MODE_STORAGE_KEY = "photoflick_theme_mode";
+
 const ThemeContext = createContext<ThemeContextType>({
   theme: "light",
   themeMode: "system",
@@ -20,44 +48,40 @@ const ThemeContext = createContext<ThemeContextType>({
   isDark: false,
 });
 
-const THEME_MODE_STORAGE_KEY = "photoflick_theme_mode";
-
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const systemColorScheme = useColorScheme();
-
   const [themeMode, setThemeModeState] = useState<ThemeMode>("system");
-
   const [theme, setTheme] = useState<"light" | "dark">(
     systemColorScheme === "dark" ? "dark" : "light",
   );
 
+  // Load saved theme preference
   useEffect(() => {
-    const loadThemeMode = async () => {
-      try {
-        const savedThemeMode = await AsyncStorage.getItem(
-          THEME_MODE_STORAGE_KEY,
-        );
-        if (savedThemeMode) {
-          setThemeModeState(savedThemeMode as ThemeMode);
+    AsyncStorage.getItem(THEME_MODE_STORAGE_KEY)
+      .then((savedMode) => {
+        if (savedMode) {
+          setThemeModeState(savedMode as ThemeMode);
         }
-      } catch (error) {
+      })
+      .catch((error) => {
         console.error("Failed to load theme mode:", error);
-      }
-    };
-
-    loadThemeMode();
+      });
   }, []);
 
+  // Update theme when mode or system preference changes
   useEffect(() => {
-    if (themeMode === "system") {
-      setTheme(systemColorScheme === "dark" ? "dark" : "light");
-    } else {
-      setTheme(themeMode);
-    }
+    setTheme(
+      themeMode === "system"
+        ? systemColorScheme === "dark"
+          ? "dark"
+          : "light"
+        : themeMode,
+    );
   }, [themeMode, systemColorScheme]);
 
+  // Save theme preference
   const setThemeMode = async (mode: ThemeMode) => {
     try {
       await AsyncStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
@@ -67,14 +91,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Toggle between light/dark modes
   const toggleTheme = () => {
-    if (themeMode === "light") {
-      setThemeMode("dark");
-    } else if (themeMode === "dark") {
-      setThemeMode("light");
-    } else {
-      setThemeMode(systemColorScheme === "dark" ? "light" : "dark");
-    }
+    const newMode =
+      themeMode === "light"
+        ? "dark"
+        : themeMode === "dark"
+        ? "light"
+        : systemColorScheme === "dark"
+        ? "light"
+        : "dark";
+
+    setThemeMode(newMode);
   };
 
   return (
@@ -95,15 +123,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useTheme = () => useContext(ThemeContext);
 
 export const getThemeColors = (isDark: boolean) => ({
-  background: isDark ? "#121212" : "#f5f5f5",
-  card: isDark ? "#1e1e1e" : "#ffffff",
-  text: isDark ? "#e0e0e0" : "#000000",
-  secondaryText: isDark ? "#a0a0a0" : "#777777",
-  primary: "#007AFF",
-  danger: "#ff3b30",
-  success: "#34c759",
-  warning: "#ffcc00",
-
-  border: isDark ? "#2c2c2c" : "#e0e0e0",
-  divider: isDark ? "#2c2c2c" : "#e0e0e0",
+  ...COLORS.shared,
+  ...(isDark ? COLORS.dark : COLORS.light),
 });

@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as MediaLibrary from "expo-media-library";
-import { getSafePhotoUrl } from "./photoUtils";
+import { getSafePhotoUrl, batchGetSafePhotoUrls } from "./photoUtils";
 import { Asset } from "expo-media-library";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DateGroup } from "../types";
 
 // Query key constants
 export const queryKeys = {
@@ -10,6 +11,83 @@ export const queryKeys = {
   photosByDate: (date: string) => ["photos", "byDate", date],
   deletePile: "deletePile",
   photoSwipe: (dateGroup: string) => ["photos", "swipe", dateGroup],
+  photoPermissions: "photoPermissions",
+  photoGroups: "photoGroups",
+};
+
+// Hook to check photo permissions
+export const usePhotoPermissions = () => {
+  return useQuery({
+    queryKey: [queryKeys.photoPermissions],
+    queryFn: async () => {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      return {
+        granted: status === "granted",
+        status,
+      };
+    },
+  });
+};
+
+// Hook to get photos grouped by month and year
+export const usePhotoGroups = (permissionGranted: boolean) => {
+  const { deletePile } = useDeletePile();
+
+  return useQuery({
+    queryKey: [queryKeys.photoGroups, deletePile.length],
+    queryFn: async () => {
+      // Get all photos
+      const assets = await MediaLibrary.getAssetsAsync({
+        mediaType: MediaLibrary.MediaType.photo,
+        first: 10000, // Adjust based on performance needs
+        sortBy: [MediaLibrary.SortBy.creationTime],
+      });
+
+      const filteredAssets = assets.assets.filter(
+        (asset) =>
+          !deletePile.some(
+            (deletedPhoto: MediaLibrary.Asset) => deletedPhoto.id === asset.id,
+          ),
+      );
+
+      // Group photos by month and year
+      const groupedByDate = filteredAssets.reduce<
+        Record<string, MediaLibrary.Asset[]>
+      >((groups, photo) => {
+        const date = new Date(photo.creationTime);
+        const monthYear = `${date.toLocaleString("default", {
+          month: "long",
+        })} ${date.getFullYear()}`;
+
+        if (!groups[monthYear]) {
+          groups[monthYear] = [];
+        }
+
+        groups[monthYear].push(photo);
+        return groups;
+      }, {});
+
+      // Convert to array format for FlatList
+      const dateGroupsArray: DateGroup[] = Object.keys(groupedByDate).map(
+        (date) => ({
+          date,
+          count: groupedByDate[date].length,
+          photos: groupedByDate[date],
+        }),
+      );
+
+      // Sort by date (most recent first)
+      dateGroupsArray.sort((a, b) => {
+        const dateA = new Date(a.photos[0].creationTime);
+        const dateB = new Date(b.photos[0].creationTime);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      return dateGroupsArray.filter((group) => group.count > 0);
+    },
+    enabled: permissionGranted === true,
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+  });
 };
 
 // Fetch photos grouped by date
@@ -67,12 +145,13 @@ export const usePhotosByDateGroup = (
         return assetDate === dateGroup && !isInDeletePile;
       });
 
-      // Preload safe URLs
+      // Use batch processing to preload URLs
+      const urlMap = await batchGetSafePhotoUrls(filteredAssets);
+
+      // Assign URLs to assets
       for (const asset of filteredAssets) {
-        try {
-          asset.uri = await getSafePhotoUrl(asset);
-        } catch (error) {
-          console.error(`Error pre-loading URL for asset ${asset.id}:`, error);
+        if (urlMap.has(asset.id)) {
+          asset.uri = urlMap.get(asset.id)!;
         }
       }
 
@@ -118,22 +197,15 @@ export const usePhotoSwipe = (
               !deletePile.some((deletedPhoto) => deletedPhoto.id === asset.id),
           );
 
-          // Process each asset to get a safe display URL
+          // Get URLs in a batch for better performance
+          const urlMap = await batchGetSafePhotoUrls(filteredAssets);
+
+          // Create assets with display URLs
           for (const asset of filteredAssets) {
             const assetWithUrl: AssetWithDisplayUrl = {
               ...asset,
-              displayUrl: undefined,
+              displayUrl: urlMap.get(asset.id) || asset.uri,
             };
-
-            try {
-              assetWithUrl.displayUrl = await getSafePhotoUrl(asset);
-            } catch (error) {
-              console.error(
-                `Error pre-loading URL for asset ${asset.id}:`,
-                error,
-              );
-            }
-
             photoAssets.push(assetWithUrl);
           }
         }

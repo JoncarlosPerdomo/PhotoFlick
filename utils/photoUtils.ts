@@ -1,36 +1,121 @@
 import * as MediaLibrary from "expo-media-library";
+import { useState, useEffect } from "react";
+
+// Cache for storing safe photo URLs
+const photoUrlCache = new Map<string, string>();
 
 /**
- * Safely gets a display URL for a photo asset that can be used with React Native's Image component.
- * Handles the ph:// URL issue on iOS by using localUri or other fallbacks.
+ * Gets a safe photo URL that works across different platforms
+ * @param photo The photo asset to get the URL for
+ * @returns A promise resolving to the safe URL
  */
 export const getSafePhotoUrl = async (
-  asset: MediaLibrary.Asset,
+  photo: MediaLibrary.Asset,
 ): Promise<string> => {
+  // Return cached URL if available
+  if (photoUrlCache.has(photo.id)) {
+    return photoUrlCache.get(photo.id)!;
+  }
+
+  // Generate and cache a new URL
   try {
-    // Get asset info which includes URLs we can use
-    const info = await MediaLibrary.getAssetInfoAsync(asset.id);
+    const asset = await MediaLibrary.getAssetInfoAsync(photo.id);
+    const safeUrl = asset.localUri || photo.uri;
 
-    // On iOS, prefer localUri which is a file:// URL that React Native can display
-    let displayUrl = info.localUri || info.uri;
-
-    // If we still have a ph:// URL, we need to use a different approach
-    if (displayUrl.startsWith("ph://")) {
-      console.log("Warning: ph:// URL detected, using fallback method");
-
-      // Try to use filename if available
-      if (info.filename) {
-        // This is a fallback that might work in some cases
-        displayUrl = `file:///var/mobile/Media/${info.filename}`;
-      }
+    if (safeUrl) {
+      photoUrlCache.set(photo.id, safeUrl);
+      return safeUrl;
     }
 
-    return displayUrl;
+    throw new Error("Failed to get safe photo URL");
   } catch (error) {
-    console.error("Error getting safe photo URL:", error);
-    return "";
+    console.error(`Error getting safe URL for photo ${photo.id}:`, error);
+    // Fallback to original URI
+    photoUrlCache.set(photo.id, photo.uri);
+    return photo.uri;
   }
 };
+
+/**
+ * React hook for getting a safe photo URL with loading state
+ * @param photo The photo asset to get the URL for
+ * @returns An object with the URL and loading state
+ */
+export const useSafePhotoUrl = (photo: MediaLibrary.Asset | null) => {
+  const [url, setUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!photo) {
+      setUrl(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // Check cache first
+    if (photoUrlCache.has(photo.id)) {
+      setUrl(photoUrlCache.get(photo.id)!);
+      setIsLoading(false);
+      return;
+    }
+
+    // Fetch URL if not cached
+    setIsLoading(true);
+    getSafePhotoUrl(photo)
+      .then((safeUrl) => {
+        setUrl(safeUrl);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error("Error in useSafePhotoUrl:", err);
+        setError(err as Error);
+        setUrl(photo.uri); // Fallback to original URI
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [photo]);
+
+  return { url, isLoading, error };
+};
+
+/**
+ * Batch process multiple photos to get their safe URLs
+ * @param photos Array of photo assets
+ * @returns Promise resolving to a map of photo IDs to safe URLs
+ */
+export const batchGetSafePhotoUrls = async (
+  photos: MediaLibrary.Asset[],
+): Promise<Map<string, string>> => {
+  const urlMap = new Map<string, string>();
+
+  // Process in batches of 10 to avoid overwhelming the system
+  const batchSize = 10;
+  for (let i = 0; i < photos.length; i += batchSize) {
+    const batch = photos.slice(i, i + batchSize);
+    await Promise.all(
+      batch.map(async (photo) => {
+        try {
+          const url = await getSafePhotoUrl(photo);
+          urlMap.set(photo.id, url);
+        } catch (error) {
+          console.error(
+            `Error in batch processing for photo ${photo.id}:`,
+            error,
+          );
+          // Fall back to original URI
+          urlMap.set(photo.id, photo.uri);
+        }
+      }),
+    );
+  }
+
+  return urlMap;
+};
+
+// Export the cache for potential reuse
+export const getPhotoUrlCache = () => photoUrlCache;
 
 /**
  * Checks if a URL is safe to use with React Native's Image component.

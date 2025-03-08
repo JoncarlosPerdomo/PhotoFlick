@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { PhotoProvider } from "../context/PhotoContext";
 import { useEffect } from "react";
 import { setupPhotoUrlHandler } from "../utils/setupPhotoUrlHandler";
 import { QueryClientProvider } from "../context/QueryClientProvider";
@@ -30,51 +29,49 @@ function AppContent() {
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <PhotoProvider>
-        <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: colors.card,
-            },
-            headerTintColor: colors.text,
-            headerShadowVisible: !isDark,
-            contentStyle: {
-              backgroundColor: colors.background,
-            },
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.card,
+          },
+          headerTintColor: colors.text,
+          headerShadowVisible: !isDark,
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
+        <Stack.Screen
+          name="index"
+          options={{
+            title: "Photo Flicker",
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={navigateToSettings}
+                style={{ marginRight: 16 }}
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={24}
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+            ),
           }}
-        >
-          <Stack.Screen
-            name="index"
-            options={{
-              title: "Photo Flicker",
-              headerRight: () => (
-                <TouchableOpacity
-                  onPress={navigateToSettings}
-                  style={{ marginRight: 16 }}
-                >
-                  <Ionicons
-                    name="settings-outline"
-                    size={24}
-                    color={colors.text}
-                  />
-                </TouchableOpacity>
-              ),
-            }}
-          />
-          <Stack.Screen
-            name="photo-swipe/[dateGroup]"
-            options={({ route }) => ({
-              title: (route.params as { dateGroup: string }).dateGroup,
-              headerBackTitle: "Back",
-            })}
-          />
-          <Stack.Screen
-            name="confirm-delete"
-            options={{ title: "Confirm Deletion" }}
-          />
-          <Stack.Screen name="settings" options={{ title: "Settings" }} />
-        </Stack>
-      </PhotoProvider>
+        />
+        <Stack.Screen
+          name="photo-swipe/[dateGroup]"
+          options={({ route }) => ({
+            title: (route.params as { dateGroup: string }).dateGroup,
+            headerBackTitle: "Back",
+          })}
+        />
+        <Stack.Screen
+          name="confirm-delete"
+          options={{ title: "Confirm Deletion" }}
+        />
+        <Stack.Screen name="settings" options={{ title: "Settings" }} />
+      </Stack>
     </>
   );
 }

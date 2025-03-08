@@ -1,7 +1,7 @@
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
-import { DateGroup } from "../../types";
-import { getThemeColors } from "../../context/ThemeContext";
+import { DateGroup } from "@/types";
+import { getThemeColors } from "@/context/ThemeContext";
 
 interface DateGroupItemProps {
   item: DateGroup;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -13,9 +13,9 @@ import {
 } from "react-native";
 import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
-import { getSafeImageSource } from "../utils/photoUtils";
-import { useDeletePile, usePhotoDelete } from "../utils/queryHooks";
-import { useTheme, getThemeColors } from "../context/ThemeContext";
+import { getSafeImageSource } from "@/utils/photoUtils";
+import { useDeletePile, usePhotoDelete } from "@/utils/queryHooks";
+import { useTheme, getThemeColors } from "@/context/ThemeContext";
 
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
@@ -23,7 +23,6 @@ interface AssetWithDisplayUrl extends MediaLibrary.Asset {
 
 export default function ConfirmDeleteScreen() {
   const router = useRouter();
-  const [progress, setProgress] = useState<number>(0);
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
 
@@ -32,13 +31,7 @@ export default function ConfirmDeleteScreen() {
     isLoading: isLoadingDeletePile,
     clearDeletePile,
   } = useDeletePile();
-  const {
-    deletePhotos,
-    isDeleting,
-    deleteError,
-    isDeleteSuccess,
-    resetDeleteState,
-  } = usePhotoDelete();
+  const { deletePhotos, isDeleting } = usePhotoDelete();
 
   const confirmDelete = () => {
     Alert.alert(
@@ -143,11 +136,6 @@ export default function ConfirmDeleteScreen() {
       >
         <ActivityIndicator size="large" color="#FF3B30" />
         <Text style={styles.deletingText}>Deleting photos...</Text>
-        {progress > 0 && (
-          <Text style={[styles.progressText, { color: colors.secondaryText }]}>
-            {Math.round(progress * 100)}% complete
-          </Text>
-        )}
       </View>
     );
   }

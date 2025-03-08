@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
-import { getThemeColors } from "../../context/ThemeContext";
+import { getThemeColors } from "@/context/ThemeContext";
 
 interface LoadingIndicatorProps {
   message?: string;

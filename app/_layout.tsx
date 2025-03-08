@@ -1,26 +1,18 @@
 import { Stack } from "expo-router";
-import { useEffect } from "react";
-import { QueryClientProvider } from "../context/QueryClientProvider";
+import { QueryClientProvider } from "@/context/QueryClientProvider";
 import {
   ThemeProvider,
   useTheme,
   getThemeColors,
-} from "../context/ThemeContext";
+} from "@/context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
-import { TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 function AppContent() {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
-  const router = useRouter();
-
-  const navigateToSettings = () => {
-    router.push("/settings");
-  };
-
-  return (
+    useRouter();
+    return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
@@ -39,21 +31,9 @@ function AppContent() {
           name="index"
           options={{
             title: "Photo Flicker",
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={navigateToSettings}
-                style={{ marginRight: 16 }}
-              >
-                <Ionicons
-                  name="settings-outline"
-                  size={24}
-                  color={colors.text}
-                />
-              </TouchableOpacity>
-            ),
           }}
         />
-        <Stack.Screen
+          <Stack.Screen
           name="photo-swipe/[dateGroup]"
           options={({ route }) => ({
             title: (route.params as { dateGroup: string }).dateGroup,

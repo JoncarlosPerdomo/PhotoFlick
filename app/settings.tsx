@@ -4,10 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Switch,
   ScrollView,
 } from "react-native";
-import { useTheme, getThemeColors, ThemeMode } from "../context/ThemeContext";
+import { useTheme, getThemeColors, ThemeMode } from "@/context/ThemeContext";
 
 export default function SettingsScreen() {
   const { themeMode, setThemeMode, isDark } = useTheme();

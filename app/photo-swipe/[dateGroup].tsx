@@ -12,9 +12,9 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as MediaLibrary from "expo-media-library";
-import { getSafeImageSource } from "../../utils/photoUtils";
-import { usePhotoSwipe, useDeletePile } from "../../utils/queryHooks";
-import { useTheme, getThemeColors } from "../../context/ThemeContext";
+import { getSafeImageSource } from "@/utils/photoUtils";
+import { usePhotoSwipe, useDeletePile } from "@/utils/queryHooks";
+import { useTheme, getThemeColors } from "@/context/ThemeContext";
 
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
@@ -22,11 +22,6 @@ interface AssetWithDisplayUrl extends MediaLibrary.Asset {
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
-
-interface PhotoSwipeParams {
-  dateGroup: string;
-  photoIds: string;
-}
 
 export default function PhotoSwipeScreen() {
   const params = useLocalSearchParams();
@@ -71,19 +66,16 @@ export default function PhotoSwipeScreen() {
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
-
-  const nextCardOpacity = position.x.interpolate({
+  position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: [1, 0.8, 1],
     extrapolate: "clamp",
   });
-
-  const nextCardScale = position.x.interpolate({
+  position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: [1, 0.95, 1],
     extrapolate: "clamp",
   });
-
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onPanResponderMove: (_, gesture) => {

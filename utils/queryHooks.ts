@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as MediaLibrary from "expo-media-library";
-import { getSafePhotoUrl, batchGetSafePhotoUrls } from "./photoUtils";
+import { batchGetSafePhotoUrls } from "./photoUtils";
 import { Asset } from "expo-media-library";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DateGroup } from "../types";
+import { DateGroup } from "@/types";
 
 // Query key constants
 export const queryKeys = {
@@ -99,112 +99,13 @@ export const usePhotoGroups = (permissionGranted: boolean) => {
 
       return dateGroupsArray.filter((group) => group.count > 0);
     },
-    enabled: permissionGranted === true,
+    enabled: permissionGranted,
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 };
 
 // Fetch photos grouped by date
-export const usePhotosByDate = () => {
-  return useQuery({
-    queryKey: [queryKeys.photos],
-    queryFn: async () => {
-      // Get all photos with pagination
-      let allAssets: MediaLibrary.Asset[] = [];
-      let hasNextPage = true;
-      let cursor: string | undefined = undefined;
-
-      while (hasNextPage) {
-        const result = await MediaLibrary.getAssetsAsync({
-          mediaType: MediaLibrary.MediaType.photo,
-          first: 500, // Smaller batch size for better performance
-          sortBy: [MediaLibrary.SortBy.creationTime],
-          after: cursor,
-        });
-
-        allAssets = [...allAssets, ...result.assets];
-        hasNextPage = result.hasNextPage;
-        cursor = result.endCursor;
-
-        // Safety check to prevent infinite loops
-        if (!result.assets.length) break;
-      }
-
-      // Group photos by date
-      const photosByDate: Record<string, MediaLibrary.Asset[]> = {};
-
-      for (const asset of allAssets) {
-        const date = new Date(asset.creationTime * 1000)
-          .toISOString()
-          .split("T")[0];
-        if (!photosByDate[date]) {
-          photosByDate[date] = [];
-        }
-        photosByDate[date].push(asset);
-      }
-
-      return photosByDate;
-    },
-  });
-};
-
 // Fetch photos for a specific date group
-export const usePhotosByDateGroup = (
-  dateGroup: string,
-  excludeFromDeletePile: MediaLibrary.Asset[] = [],
-) => {
-  return useQuery({
-    queryKey: queryKeys.photosByDate(dateGroup),
-    queryFn: async () => {
-      // Get all photos with pagination
-      let allAssets: MediaLibrary.Asset[] = [];
-      let hasNextPage = true;
-      let cursor: string | undefined = undefined;
-
-      while (hasNextPage) {
-        const result = await MediaLibrary.getAssetsAsync({
-          mediaType: MediaLibrary.MediaType.photo,
-          first: 500, // Smaller batch size for better performance
-          sortBy: [MediaLibrary.SortBy.creationTime],
-          after: cursor,
-        });
-
-        allAssets = [...allAssets, ...result.assets];
-        hasNextPage = result.hasNextPage;
-        cursor = result.endCursor;
-
-        // Safety check to prevent infinite loops
-        if (!result.assets.length) break;
-      }
-
-      // Filter by date and exclude photos in delete pile
-      const filteredAssets = allAssets.filter((asset) => {
-        const assetDate = new Date(asset.creationTime * 1000)
-          .toISOString()
-          .split("T")[0];
-        const isInDeletePile = excludeFromDeletePile.some(
-          (deletedPhoto) => deletedPhoto.id === asset.id,
-        );
-
-        return assetDate === dateGroup && !isInDeletePile;
-      });
-
-      // Use batch processing to preload URLs
-      const urlMap = await batchGetSafePhotoUrls(filteredAssets);
-
-      // Assign URLs to assets
-      for (const asset of filteredAssets) {
-        if (urlMap.has(asset.id)) {
-          asset.uri = urlMap.get(asset.id)!;
-        }
-      }
-
-      return filteredAssets;
-    },
-    enabled: !!dateGroup,
-  });
-};
-
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
 }

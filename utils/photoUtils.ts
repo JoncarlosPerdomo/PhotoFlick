@@ -1,5 +1,4 @@
 import * as MediaLibrary from "expo-media-library";
-import { useState, useEffect } from "react";
 
 // Cache for storing safe photo URLs
 const photoUrlCache = new Map<string, string>();
@@ -35,51 +34,6 @@ export const getSafePhotoUrl = async (
     return photo.uri;
   }
 };
-
-/**
- * React hook for getting a safe photo URL with loading state
- * @param photo The photo asset to get the URL for
- * @returns An object with the URL and loading state
- */
-export const useSafePhotoUrl = (photo: MediaLibrary.Asset | null) => {
-  const [url, setUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    if (!photo) {
-      setUrl(null);
-      setIsLoading(false);
-      return;
-    }
-
-    // Check cache first
-    if (photoUrlCache.has(photo.id)) {
-      setUrl(photoUrlCache.get(photo.id)!);
-      setIsLoading(false);
-      return;
-    }
-
-    // Fetch URL if not cached
-    setIsLoading(true);
-    getSafePhotoUrl(photo)
-      .then((safeUrl) => {
-        setUrl(safeUrl);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error("Error in useSafePhotoUrl:", err);
-        setError(err as Error);
-        setUrl(photo.uri); // Fallback to original URI
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [photo]);
-
-  return { url, isLoading, error };
-};
-
 /**
  * Batch process multiple photos to get their safe URLs
  * @param photos Array of photo assets
@@ -115,8 +69,6 @@ export const batchGetSafePhotoUrls = async (
 };
 
 // Export the cache for potential reuse
-export const getPhotoUrlCache = () => photoUrlCache;
-
 /**
  * Checks if a URL is safe to use with React Native's Image component.
  * Specifically, it checks if the URL is not a ph:// URL.

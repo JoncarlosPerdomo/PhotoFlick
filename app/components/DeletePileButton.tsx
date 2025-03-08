@@ -1,6 +1,6 @@
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
-import { getThemeColors } from "../../context/ThemeContext";
+import { getThemeColors } from "@/context/ThemeContext";
 
 interface DeletePileButtonProps {
   count: number;

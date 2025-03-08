@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { getThemeColors } from "../../context/ThemeContext";
+import { getThemeColors } from "@/context/ThemeContext";
 
 interface ErrorViewProps {
   message: string;

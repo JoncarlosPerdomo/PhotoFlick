@@ -15,6 +15,7 @@ import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
 import { getSafeImageSource } from "../utils/photoUtils";
 import { useDeletePile, usePhotoDelete } from "../utils/queryHooks";
+import { useTheme, getThemeColors } from "../context/ThemeContext";
 
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
@@ -23,6 +24,8 @@ interface AssetWithDisplayUrl extends MediaLibrary.Asset {
 export default function ConfirmDeleteScreen() {
   const router = useRouter();
   const [progress, setProgress] = useState<number>(0);
+  const { isDark } = useTheme();
+  const colors = getThemeColors(isDark);
 
   const {
     deletePile,
@@ -98,7 +101,12 @@ export default function ConfirmDeleteScreen() {
   };
 
   const renderPhoto = ({ item }: ListRenderItemInfo<AssetWithDisplayUrl>) => (
-    <View style={styles.photoContainer}>
+    <View
+      style={[
+        styles.photoContainer,
+        { backgroundColor: isDark ? "#333" : "#e0e0e0" },
+      ]}
+    >
       <Image
         source={getSafeImageSource(item.displayUrl, item.uri)}
         style={styles.photo}
@@ -109,20 +117,34 @@ export default function ConfirmDeleteScreen() {
 
   if (isLoadingDeletePile) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading photos...</Text>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.secondaryText }]}>
+          Loading photos...
+        </Text>
       </View>
     );
   }
 
   if (isDeleting) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color="#FF3B30" />
         <Text style={styles.deletingText}>Deleting photos...</Text>
         {progress > 0 && (
-          <Text style={styles.progressText}>
+          <Text style={[styles.progressText, { color: colors.secondaryText }]}>
             {Math.round(progress * 100)}% complete
           </Text>
         )}
@@ -132,8 +154,16 @@ export default function ConfirmDeleteScreen() {
 
   if (deletePile.length === 0) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.emptyText}>No photos in delete pile</Text>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
+          No photos in delete pile
+        </Text>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -145,10 +175,18 @@ export default function ConfirmDeleteScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Delete Pile</Text>
-        <Text style={styles.subtitle}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.card,
+            borderBottomColor: isDark ? "#333" : "#e0e0e0",
+          },
+        ]}
+      >
+        <Text style={[styles.title, { color: colors.text }]}>Delete Pile</Text>
+        <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
           {deletePile.length} photo{deletePile.length !== 1 ? "s" : ""} selected
           for deletion
         </Text>
@@ -162,7 +200,15 @@ export default function ConfirmDeleteScreen() {
         contentContainerStyle={styles.photoGrid}
       />
 
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: colors.card,
+            borderTopColor: isDark ? "#333" : "#e0e0e0",
+          },
+        ]}
+      >
         <TouchableOpacity
           style={styles.clearButton}
           onPress={handleClearSelection}
@@ -170,10 +216,24 @@ export default function ConfirmDeleteScreen() {
           <Text style={styles.clearButtonText}>Clear</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.cancelButton}
+          style={[
+            styles.cancelButton,
+            {
+              backgroundColor: isDark ? "#444" : "#e0e0e0",
+            },
+          ]}
           onPress={() => router.back()}
         >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+          <Text
+            style={[
+              styles.cancelButtonText,
+              {
+                color: isDark ? "#e0e0e0" : "#333",
+              },
+            ]}
+          >
+            Cancel
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.deleteButton} onPress={confirmDelete}>
           <Text style={styles.deleteButtonText}>Delete All</Text>
@@ -189,7 +249,6 @@ const photoSize = width / 3 - 12;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   centerContent: {
     justifyContent: "center",
@@ -199,8 +258,6 @@ const styles = StyleSheet.create({
   header: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    backgroundColor: "white",
   },
   title: {
     fontSize: 20,
@@ -209,7 +266,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: "#666",
   },
   photoGrid: {
     padding: 8,
@@ -218,7 +274,6 @@ const styles = StyleSheet.create({
     margin: 4,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "#e0e0e0",
   },
   photo: {
     width: photoSize,
@@ -228,8 +283,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-    backgroundColor: "white",
   },
   clearButton: {
     flex: 1,
@@ -246,7 +299,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: "#e0e0e0",
     borderRadius: 8,
     padding: 12,
     marginRight: 8,
@@ -255,7 +307,6 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
   },
   deleteButton: {
     flex: 1,
@@ -273,7 +324,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
   },
   deletingText: {
     marginTop: 10,
@@ -283,11 +333,9 @@ const styles = StyleSheet.create({
   progressText: {
     marginTop: 5,
     fontSize: 14,
-    color: "#666",
   },
   emptyText: {
     fontSize: 18,
-    color: "#666",
     marginBottom: 16,
   },
   backButton: {

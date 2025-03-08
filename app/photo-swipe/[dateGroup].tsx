@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as MediaLibrary from "expo-media-library";
 import { getSafeImageSource } from "../../utils/photoUtils";
 import { usePhotoSwipe, useDeletePile } from "../../utils/queryHooks";
+import { useTheme, getThemeColors } from "../../context/ThemeContext";
 
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
   displayUrl?: string;
@@ -32,6 +33,8 @@ export default function PhotoSwipeScreen() {
   const dateGroup = params.dateGroup as string;
   const photoIds = params.photoIds as string;
   const router = useRouter();
+  const { isDark } = useTheme();
+  const colors = getThemeColors(isDark);
 
   const { deletePile, addToDeletePile } = useDeletePile();
   const {
@@ -135,31 +138,47 @@ export default function PhotoSwipeScreen() {
 
   if (isError) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.errorText}>
-          Error loading photos: {error.message}
-        </Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>
+            Error loading photos: {error.message}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refetch()}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading photos...</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.secondaryText }]}>
+            Loading photos...
+          </Text>
+        </View>
       </View>
     );
   }
 
   if (photos.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.endOfStack}>
-          <Text style={styles.endOfStackText}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View
+          style={[
+            styles.endOfStack,
+            { backgroundColor: isDark ? "#2c2c2c" : "#f0f0f0" },
+          ]}
+        >
+          <Text
+            style={[styles.endOfStackText, { color: colors.secondaryText }]}
+          >
             No more photos in this period
           </Text>
         </View>
@@ -177,6 +196,8 @@ export default function PhotoSwipeScreen() {
               style={[
                 styles.card,
                 {
+                  backgroundColor: colors.card,
+                  shadowOpacity: isDark ? 0.5 : 0.3,
                   transform: [
                     { translateX: position.x },
                     { translateY: position.y },
@@ -220,6 +241,8 @@ export default function PhotoSwipeScreen() {
               style={[
                 styles.card,
                 {
+                  backgroundColor: colors.card,
+                  shadowOpacity: isDark ? 0.5 : 0.3,
                   opacity: nextCardOpacity,
                   transform: [{ scale: nextCardScale }],
                 },
@@ -239,14 +262,16 @@ export default function PhotoSwipeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.cardContainer}>{renderCards()}</View>
 
       <View style={styles.footer}>
-        <Text style={styles.instructions}>
+        <Text style={[styles.instructions, { color: colors.text }]}>
           Swipe LEFT to DELETE, swipe RIGHT to KEEP
         </Text>
-        <Text style={styles.counter}>{photos.length} photos remaining</Text>
+        <Text style={[styles.counter, { color: colors.secondaryText }]}>
+          {photos.length} photos remaining
+        </Text>
       </View>
     </View>
   );
@@ -255,7 +280,6 @@ export default function PhotoSwipeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   centerContent: {
     justifyContent: "center",
@@ -273,10 +297,8 @@ const styles = StyleSheet.create({
     height: SCREEN_WIDTH * 1.2,
     borderRadius: 10,
     position: "absolute",
-    backgroundColor: "white",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
     overflow: "hidden",
@@ -284,7 +306,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
   },
   image: {
     width: "100%",
@@ -318,12 +339,10 @@ const styles = StyleSheet.create({
     height: SCREEN_WIDTH * 1.2,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f0f0f0",
     borderRadius: 10,
   },
   endOfStackText: {
     fontSize: 18,
-    color: "#888",
     textAlign: "center",
     padding: 20,
   },
@@ -333,12 +352,10 @@ const styles = StyleSheet.create({
   },
   instructions: {
     fontSize: 16,
-    color: "#333",
     marginBottom: 5,
   },
   counter: {
     fontSize: 14,
-    color: "#888",
   },
   errorText: {
     fontSize: 16,

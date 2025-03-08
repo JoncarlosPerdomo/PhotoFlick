@@ -46,7 +46,7 @@ function AppContent() {
           <Stack.Screen
             name="index"
             options={{
-              title: "Photo Organizer",
+              title: "Photo Flicker",
               headerRight: () => (
                 <TouchableOpacity
                   onPress={navigateToSettings}

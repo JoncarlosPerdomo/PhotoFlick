@@ -37,7 +37,8 @@ export default function PhotoSwipeScreen() {
   );
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingImage, setLoadingImage] = useState<boolean>(false);
-  const { addToDeletePile, saveDeletePile } = usePhotoContext();
+  const { addToDeletePile, saveDeletePile, deletePile, loadDeletePile } =
+    usePhotoContext();
   const router = useRouter();
   const topPhotoIdRef = useRef<string | null>(null);
   const position = useRef(new Animated.ValueXY()).current;
@@ -46,6 +47,10 @@ export default function PhotoSwipeScreen() {
     outputRange: ["-10deg", "0deg", "10deg"],
     extrapolate: "clamp",
   });
+
+  useEffect(() => {
+    loadDeletePile();
+  }, []);
 
   useEffect(() => {
     const loadPhotos = async () => {
@@ -70,8 +75,11 @@ export default function PhotoSwipeScreen() {
           });
 
           // Filter the assets to only include those in our batch
-          const filteredAssets = assets.assets.filter((asset) =>
-            batch.includes(asset.id),
+          // and exclude those already in the delete pile
+          const filteredAssets = assets.assets.filter(
+            (asset) =>
+              batch.includes(asset.id) &&
+              !deletePile.some((deletedPhoto) => deletedPhoto.id === asset.id),
           );
 
           // Process each asset to get a safe display URL
@@ -104,7 +112,7 @@ export default function PhotoSwipeScreen() {
     };
 
     loadPhotos();
-  }, [photoIds]);
+  }, [photoIds, deletePile]);
 
   // This function gets a proper display URL for an asset
   const getDisplayUrl = async (asset: AssetWithDisplayUrl): Promise<string> => {

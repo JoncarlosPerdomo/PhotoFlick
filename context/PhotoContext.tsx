@@ -21,7 +21,13 @@ export const PhotoProvider: React.FC<PhotoProviderProps> = ({ children }) => {
   const [deletePile, setDeletePile] = useState<Asset[]>([]);
 
   const addToDeletePile = (photo: Asset) => {
-    setDeletePile((prev) => [...prev, photo]);
+    setDeletePile((prev) => {
+      const photoExists = prev.some((item) => item.id === photo.id);
+      if (photoExists) {
+        return prev;
+      }
+      return [...prev, photo];
+    });
   };
 
   const removeFromDeletePile = (photoId: string) => {

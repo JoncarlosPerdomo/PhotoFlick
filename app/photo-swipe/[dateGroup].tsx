@@ -37,8 +37,9 @@ export default function PhotoSwipeScreen() {
   const colors = getThemeColors(isDark);
 
   const [processedPhotoIds, setProcessedPhotoIds] = useState<string[]>([]);
-
   const { deletePile, addToDeletePile } = useDeletePile();
+  const isAnimatingRef = useRef(false);
+
   const {
     data: photos = [],
     isLoading,
@@ -103,6 +104,9 @@ export default function PhotoSwipeScreen() {
   };
 
   const swipeLeft = () => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
+
     Animated.timing(position, {
       toValue: { x: -SCREEN_WIDTH * 1.5, y: 0 },
       duration: 250,
@@ -111,6 +115,9 @@ export default function PhotoSwipeScreen() {
   };
 
   const swipeRight = () => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
+
     Animated.timing(position, {
       toValue: { x: SCREEN_WIDTH * 1.5, y: 0 },
       duration: 250,
@@ -127,11 +134,12 @@ export default function PhotoSwipeScreen() {
       addToDeletePile(photo);
     }
 
-    // For both directions, mark the photo as processed
     setProcessedPhotoIds((prev) => [...prev, photo.id]);
 
-    // Reset position immediately for the next card
-    position.setValue({ x: 0, y: 0 });
+    requestAnimationFrame(() => {
+      position.setValue({ x: 0, y: 0 });
+      isAnimatingRef.current = false;
+    });
 
     if (displayPhotos.length <= 1) {
       router.back();
@@ -193,6 +201,8 @@ export default function PhotoSwipeScreen() {
   }
 
   const renderCards = () => {
+    if (displayPhotos.length === 0) return [];
+
     return displayPhotos
       .map((photo, index) => {
         if (index === 0) {
@@ -204,6 +214,7 @@ export default function PhotoSwipeScreen() {
                 {
                   backgroundColor: colors.card,
                   shadowOpacity: isDark ? 0.5 : 0.3,
+                  zIndex: 2,
                   transform: [
                     { translateX: position.x },
                     { translateY: position.y },
@@ -249,8 +260,9 @@ export default function PhotoSwipeScreen() {
                 {
                   backgroundColor: colors.card,
                   shadowOpacity: isDark ? 0.5 : 0.3,
-                  opacity: nextCardOpacity,
-                  transform: [{ scale: nextCardScale }],
+                  zIndex: 1,
+                  opacity: 1,
+                  transform: [{ scale: 1 }],
                 },
               ]}
             >

@@ -3,7 +3,11 @@ import { View, FlatList, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { DateGroup } from "@/types";
 import { useTheme, getThemeColors } from "@/context/ThemeContext";
-import { usePhotoPermissions, usePhotoGroups } from "@/utils/queryHooks";
+import {
+  usePhotoPermissions,
+  usePhotoGroups,
+  useCompletedGroups,
+} from "@/utils/queryHooks";
 import LoadingIndicator from "./components/LoadingIndicator";
 import ErrorView from "./components/ErrorView";
 import DateGroupItem from "./components/DateGroupItem";
@@ -16,6 +20,7 @@ export default function HomeScreen() {
   const colors = getThemeColors(isDark);
 
   const { deletePile } = useDeletePile();
+  const { completedGroups } = useCompletedGroups();
   const { data: permissionResult, isLoading: isLoadingPermission } =
     usePhotoPermissions();
 
@@ -84,6 +89,7 @@ export default function HomeScreen() {
               item={item}
               onPress={navigateToPhotoSwipe}
               isDark={isDark}
+              isCompleted={completedGroups.includes(item.date)}
             />
           )}
           keyExtractor={(item) => item.date}

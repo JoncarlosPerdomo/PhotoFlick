@@ -7,22 +7,42 @@ interface DateGroupItemProps {
   item: DateGroup;
   onPress: (item: DateGroup) => void;
   isDark: boolean;
+  isCompleted?: boolean;
 }
 
 const DateGroupItem: React.FC<DateGroupItemProps> = ({
   item,
   onPress,
   isDark,
+  isCompleted = false,
 }) => {
   const colors = getThemeColors(isDark);
 
   return (
     <TouchableOpacity
-      style={[styles.dateGroup, { backgroundColor: colors.card }]}
+      style={[
+        styles.dateGroup,
+        { backgroundColor: colors.card },
+        isCompleted && styles.completedGroup,
+      ]}
       onPress={() => onPress(item)}
     >
-      <Text style={[styles.dateText, { color: colors.text }]}>{item.date}</Text>
-      <Text style={[styles.countText, { color: colors.secondaryText }]}>
+      <Text
+        style={[
+          styles.dateText,
+          { color: colors.text },
+          isCompleted && styles.completedText,
+        ]}
+      >
+        {item.date}
+      </Text>
+      <Text
+        style={[
+          styles.countText,
+          { color: colors.secondaryText },
+          isCompleted && styles.completedText,
+        ]}
+      >
         {item.count} photos
       </Text>
     </TouchableOpacity>
@@ -47,6 +67,12 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 14,
     marginTop: 4,
+  },
+  completedGroup: {
+    opacity: 0.7,
+  },
+  completedText: {
+    textDecorationLine: "line-through",
   },
 });
 

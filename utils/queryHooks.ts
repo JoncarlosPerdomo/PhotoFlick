@@ -13,6 +13,7 @@ export const queryKeys = {
   photoSwipe: (dateGroup: string) => ["photos", "swipe", dateGroup],
   photoPermissions: "photoPermissions",
   photoGroups: "photoGroups",
+  completedGroups: "completedGroups",
 };
 
 // Hook to check photo permissions
@@ -328,5 +329,40 @@ export const usePhotoDelete = () => {
     deleteError: deletePhotosMutation.error,
     isDeleteSuccess: deletePhotosMutation.isSuccess,
     resetDeleteState: deletePhotosMutation.reset,
+  };
+};
+
+// Hook to manage completed date groups
+export const useCompletedGroups = () => {
+  const queryClient = useQueryClient();
+
+  const { data: completedGroups = [] } = useQuery({
+    queryKey: [queryKeys.completedGroups],
+    queryFn: async () => {
+      const storedGroups = await AsyncStorage.getItem(
+        queryKeys.completedGroups,
+      );
+      return storedGroups ? JSON.parse(storedGroups) : [];
+    },
+  });
+
+  const markGroupAsCompleted = async (dateGroup: string) => {
+    const updatedGroups = [...completedGroups, dateGroup];
+    await AsyncStorage.setItem(
+      queryKeys.completedGroups,
+      JSON.stringify(updatedGroups),
+    );
+    queryClient.setQueryData([queryKeys.completedGroups], updatedGroups);
+  };
+
+  const resetCompletedGroups = async () => {
+    await AsyncStorage.removeItem(queryKeys.completedGroups);
+    queryClient.setQueryData([queryKeys.completedGroups], []);
+  };
+
+  return {
+    completedGroups,
+    markGroupAsCompleted,
+    resetCompletedGroups,
   };
 };

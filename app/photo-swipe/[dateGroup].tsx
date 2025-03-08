@@ -13,7 +13,11 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as MediaLibrary from "expo-media-library";
 import { getSafeImageSource } from "@/utils/photoUtils";
-import { usePhotoSwipe, useDeletePile } from "@/utils/queryHooks";
+import {
+  usePhotoSwipe,
+  useDeletePile,
+  useCompletedGroups,
+} from "@/utils/queryHooks";
 import { useTheme, getThemeColors } from "@/context/ThemeContext";
 
 interface AssetWithDisplayUrl extends MediaLibrary.Asset {
@@ -38,6 +42,7 @@ export default function PhotoSwipeScreen() {
     "left" | "right" | null
   >(null);
   const { deletePile, addToDeletePile, removeFromDeletePile } = useDeletePile();
+  const { markGroupAsCompleted } = useCompletedGroups();
   const isAnimatingRef = useRef(false);
 
   const {
@@ -142,7 +147,9 @@ export default function PhotoSwipeScreen() {
       isAnimatingRef.current = false;
     });
 
+    // If this was the last photo, mark the group as completed
     if (displayPhotos.length <= 1) {
+      markGroupAsCompleted(dateGroup);
       router.back();
     }
   };

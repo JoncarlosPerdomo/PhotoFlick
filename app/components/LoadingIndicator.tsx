@@ -7,7 +7,7 @@ interface LoadingIndicatorProps {
   isDark: boolean;
 }
 
-export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
+const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   message = "Loading...",
   isDark,
 }) => {
@@ -34,3 +34,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
+export default LoadingIndicator;

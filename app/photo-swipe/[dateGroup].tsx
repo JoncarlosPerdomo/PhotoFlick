@@ -269,6 +269,7 @@ export default function PhotoSwipeScreen() {
                     { translateY: position.y },
                     { rotate: rotation },
                   ],
+                  backfaceVisibility: "hidden",
                 },
               ]}
               {...panResponder.panHandlers}
@@ -312,6 +313,7 @@ export default function PhotoSwipeScreen() {
                   zIndex: 1,
                   opacity: 1,
                   transform: [{ scale: 1 }],
+                  backfaceVisibility: "hidden",
                 },
               ]}
             >
@@ -366,6 +368,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 10,
+    backgroundColor: "transparent",
   },
   card: {
     width: SCREEN_WIDTH - 40,
@@ -377,6 +380,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     overflow: "hidden",
+    backfaceVisibility: "hidden",
   },
   loadingText: {
     marginTop: 10,

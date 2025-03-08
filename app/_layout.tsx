@@ -1,6 +1,5 @@
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import { setupPhotoUrlHandler } from "../utils/setupPhotoUrlHandler";
 import { QueryClientProvider } from "../context/QueryClientProvider";
 import {
   ThemeProvider,
@@ -16,11 +15,6 @@ function AppContent() {
   const { isDark } = useTheme();
   const colors = getThemeColors(isDark);
   const router = useRouter();
-
-  // Set up the photo URL handler when the app starts
-  useEffect(() => {
-    setupPhotoUrlHandler();
-  }, []);
 
   const navigateToSettings = () => {
     router.push("/settings");

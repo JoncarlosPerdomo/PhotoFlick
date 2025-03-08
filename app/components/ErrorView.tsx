@@ -9,7 +9,7 @@ interface ErrorViewProps {
   isDark: boolean;
 }
 
-export const ErrorView: React.FC<ErrorViewProps> = ({
+const ErrorView: React.FC<ErrorViewProps> = ({
   message,
   buttonText = "Retry",
   onRetry,
@@ -54,3 +54,5 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+export default ErrorView;

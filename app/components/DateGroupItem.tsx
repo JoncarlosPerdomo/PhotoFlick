@@ -9,7 +9,7 @@ interface DateGroupItemProps {
   isDark: boolean;
 }
 
-export const DateGroupItem: React.FC<DateGroupItemProps> = ({
+const DateGroupItem: React.FC<DateGroupItemProps> = ({
   item,
   onPress,
   isDark,
@@ -49,3 +49,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+
+export default DateGroupItem;

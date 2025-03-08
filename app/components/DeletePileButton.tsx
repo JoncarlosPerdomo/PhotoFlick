@@ -8,7 +8,7 @@ interface DeletePileButtonProps {
   isDark: boolean;
 }
 
-export const DeletePileButton: React.FC<DeletePileButtonProps> = ({
+const DeletePileButton: React.FC<DeletePileButtonProps> = ({
   count,
   onPress,
   isDark,
@@ -40,3 +40,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
+export default DeletePileButton;

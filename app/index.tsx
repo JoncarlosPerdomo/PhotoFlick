@@ -4,10 +4,10 @@ import { useRouter } from "expo-router";
 import { DateGroup } from "../types";
 import { useTheme, getThemeColors } from "../context/ThemeContext";
 import { usePhotoPermissions, usePhotoGroups } from "../utils/queryHooks";
-import { LoadingIndicator } from "./components/LoadingIndicator";
-import { ErrorView } from "./components/ErrorView";
-import { DateGroupItem } from "./components/DateGroupItem";
-import { DeletePileButton } from "./components/DeletePileButton";
+import LoadingIndicator from "./components/LoadingIndicator";
+import ErrorView from "./components/ErrorView";
+import DateGroupItem from "./components/DateGroupItem";
+import DeletePileButton from "./components/DeletePileButton";
 import { useDeletePile } from "../utils/queryHooks";
 
 export default function HomeScreen() {

@@ -1,39 +1,30 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { Stack } from "expo-router";
+import { PhotoProvider } from "../context/PhotoContext";
+import { useEffect } from "react";
+import { setupPhotoUrlHandler } from "../utils/setupPhotoUrlHandler";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
+export default function Layout() {
+  // Set up the photo URL handler when the app starts
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+    setupPhotoUrlHandler();
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <PhotoProvider>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen name="index" options={{ title: "Photo Organizer" }} />
+        <Stack.Screen
+          name="photo-swipe/[dateGroup]"
+          options={({ route }) => ({
+            title: (route.params as { dateGroup: string }).dateGroup,
+            headerBackTitle: "Back",
+          })}
+        />
+        <Stack.Screen
+          name="confirm-delete"
+          options={{ title: "Confirm Deletion" }}
+        />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    </PhotoProvider>
   );
 }

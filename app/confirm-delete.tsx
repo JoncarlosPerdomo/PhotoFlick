@@ -77,6 +77,26 @@ export default function ConfirmDeleteScreen() {
     }
   };
 
+  const handleClearSelection = () => {
+    Alert.alert(
+      "Clear Selection",
+      "Are you sure you want to clear your selection? This will not delete any photos.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear",
+          onPress: () => {
+            clearDeletePile();
+            router.back();
+          },
+        },
+      ],
+    );
+  };
+
   const renderPhoto = ({ item }: ListRenderItemInfo<AssetWithDisplayUrl>) => (
     <View style={styles.photoContainer}>
       <Image
@@ -144,6 +164,12 @@ export default function ConfirmDeleteScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
+          style={styles.clearButton}
+          onPress={handleClearSelection}
+        >
+          <Text style={styles.clearButtonText}>Clear</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => router.back()}
         >
@@ -204,6 +230,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
     backgroundColor: "white",
+  },
+  clearButton: {
+    flex: 1,
+    backgroundColor: "#4F86C6",
+    borderRadius: 8,
+    padding: 12,
+    marginRight: 8,
+    alignItems: "center",
+  },
+  clearButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "white",
   },
   cancelButton: {
     flex: 1,
